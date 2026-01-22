@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logistikbude 3.0</title>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+<div class="app-container">
+    <aside class="sidebar">
+        <div class="logo-area"><i class="ri-truck-line"></i> LOGISTIKBUDE 3.0</div>
+        <nav class="main-nav">
+            <a href="#" class="nav-item active" onclick="switchTab('cockpit')"><i class="ri-dashboard-line"></i> Cockpit</a>
+            <a href="#" class="nav-item" onclick="switchTab('bookings')"><i class="ri-route-line"></i> Bookings</a>
+            <a href="#" class="nav-item" onclick="switchTab('balances')"><i class="ri-scales-line"></i> Balances</a>
+        </nav>
+        <div class="inbox-panel">
+            <div class="panel-header"><h5>INTELLIGENT INBOX</h5></div>
+            <div id="task-list"></div>
+        </div>
+    </aside>
+
+    <main class="content-area">
+        <div id="view-cockpit" class="view active">
+            <header><h1>Operations Control Tower</h1></header>
+            <div class="map-container" id="map-placeholder">
+                <div class="map-overlay"><h2>[Interactive Map Layer]</h2></div>
+            </div>
+        </div>
+
+        <div id="view-bookings" class="view hidden">
+            <header><h1>Booking #3421: Split-Stream View</h1></header>
+            <div class="swimlane-container">
+                <div class="lane-header">Physical Route (Truck)</div>
+                <div class="lane-track" id="lane-physical"></div>
+                <div class="lane-header">Liability Flow (Pallets)</div>
+                <div class="lane-track" id="lane-liability"></div>
+            </div>
+        </div>
+
+        <div id="view-balances" class="view hidden">
+            <header><h1>Reconciliation & Compensation</h1></header>
+            <div id="balance-grid">
+                <button class="btn btn-danger" onclick="openCompensationModal()">Resolve -50 Pallet Debt</button>
+            </div>
+        </div>
+    </main>
+</div>
+
+<div id="compensation-modal" class="modal hidden">
+    <div class="modal-content">
+        <h3>Resolve Balance Mismatch</h3>
+        <p>Regional Transport owes 50 EUR Pallets.</p>
+        <div class="option-cards">
+            <div class="option-card" onclick="selectOption('invoice')">Invoice</div>
+            <div class="option-card" onclick="selectOption('psp')">PSP Pickup</div>
+        </div>
+        <div id="psp-options" class="hidden">
+            <label>Who pays the €120 fee?</label>
+            <select><option>Charge Debtor</option><option>Split 50/50</option></select>
+        </div>
+        <button onclick="closeModal()">Execute</button>
+    </div>
+</div>
+
+<script src="js/logic.js"></script>
+</body>
+</html>

@@ -1,0 +1,409 @@
+:root {
+    --bg-dark: #0f172a;
+    --bg-panel: #1e293b;
+    --text: #f8fafc;
+    --blue: #3b82f6;
+    --border: #334155;
+    --red: #ef4444;
+    --yellow: #eab308;
+    --green: #22c55e;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    background: var(--bg-dark);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    margin: 0;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.app-container {
+    display: flex;
+    width: 100%;
+}
+
+/* SIDEBAR */
+.sidebar {
+    width: 280px;
+    background: var(--bg-panel);
+    padding: 1rem;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.logo-area {
+    font-size: 1.25rem;
+    font-weight: bold;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.logo-area i {
+    font-size: 1.5rem;
+    color: var(--blue);
+}
+
+/* NAVIGATION */
+.main-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    color: var(--text);
+    text-decoration: none;
+    transition: background 0.2s;
+}
+
+.nav-item:hover {
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.nav-item.active {
+    background: var(--blue);
+    color: white;
+}
+
+.nav-item i {
+    font-size: 1.25rem;
+}
+
+/* INBOX PANEL */
+.inbox-panel {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 1rem;
+    flex: 1;
+}
+
+.panel-header h5 {
+    margin: 0 0 1rem 0;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    color: var(--blue);
+}
+
+#task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.task-item {
+    background: var(--bg-panel);
+    padding: 0.75rem;
+    border-radius: 6px;
+    border-left: 3px solid var(--blue);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.task-item:hover {
+    transform: translateX(4px);
+}
+
+.task-item.critical {
+    border-left-color: var(--red);
+}
+
+.task-item.warning {
+    border-left-color: var(--yellow);
+}
+
+/* CONTENT AREA */
+.content-area {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.view header {
+    margin-bottom: 2rem;
+}
+
+.view h1 {
+    font-size: 2rem;
+    margin: 0;
+}
+
+/* MAP CONTAINER */
+.map-container {
+    background: var(--bg-panel);
+    border-radius: 12px;
+    height: 600px;
+    position: relative;
+    overflow: hidden;
+}
+
+.map-overlay {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    color: var(--border);
+}
+
+#map-placeholder.has-map .map-overlay {
+    display: none;
+}
+
+/* SWIMLANE VISUALS */
+.swimlane-container {
+    background: var(--bg-panel);
+    padding: 2rem;
+    border-radius: 12px;
+}
+
+.lane-header {
+    font-size: 0.875rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--blue);
+    margin-bottom: 1rem;
+    margin-top: 2rem;
+}
+
+.lane-header:first-child {
+    margin-top: 0;
+}
+
+.lane-track {
+    display: flex;
+    position: relative;
+    padding-bottom: 3rem;
+    margin-bottom: 2rem;
+}
+
+.lane-track::before {
+    content: '';
+    position: absolute;
+    top: 24px;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--border);
+    z-index: 0;
+}
+
+.node {
+    position: relative;
+    z-index: 1;
+    margin-right: 60px;
+    background: var(--bg-dark);
+    padding: 1rem;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    width: 140px;
+    min-height: 60px;
+}
+
+.node h5 {
+    margin: 0 0 0.25rem 0;
+    font-size: 0.875rem;
+    color: var(--text);
+}
+
+.node p {
+    margin: 0;
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+.node.psp {
+    border-style: dashed;
+    border-color: var(--yellow);
+    margin-top: 40px;
+}
+
+/* The vertical branch line for PSP nodes */
+.node.psp::before {
+    content: '';
+    position: absolute;
+    top: -40px;
+    left: 20px;
+    width: 2px;
+    height: 40px;
+    border-left: 2px dashed var(--yellow);
+}
+
+/* BALANCES VIEW */
+#balance-grid {
+    background: var(--bg-panel);
+    padding: 2rem;
+    border-radius: 12px;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.btn-danger {
+    background: var(--red);
+    color: white;
+}
+
+/* MODAL */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: var(--bg-panel);
+    padding: 2rem;
+    width: 500px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+}
+
+.modal-content h3 {
+    margin: 0 0 1rem 0;
+    color: var(--text);
+}
+
+.modal-content p {
+    margin: 0 0 1.5rem 0;
+    color: #94a3b8;
+}
+
+.option-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.option-card {
+    background: var(--bg-dark);
+    padding: 1.5rem;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    text-align: center;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.2s;
+}
+
+.option-card:hover {
+    border-color: var(--blue);
+    transform: scale(1.05);
+}
+
+.option-card.selected {
+    border-color: var(--blue);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+#psp-options {
+    background: var(--bg-dark);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+#psp-options label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+#psp-options select {
+    width: 100%;
+    padding: 0.5rem;
+    background: var(--bg-panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 1rem;
+}
+
+.modal-content button {
+    width: 100%;
+    padding: 0.75rem;
+    background: var(--blue);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.modal-content button:hover {
+    background: #2563eb;
+}
+
+/* MAP SPECIFIC STYLES */
+.custom-marker {
+    background: transparent !important;
+    border: none !important;
+}
+
+.leaflet-popup-content-wrapper {
+    background: var(--bg-panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+
+.leaflet-popup-tip {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+}
+
+/* ANIMATIONS */
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 0.7;
+    }
+}
