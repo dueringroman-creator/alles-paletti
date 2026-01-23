@@ -628,6 +628,232 @@ function switchTab(id) {
 }
 
 // ============================================
+// ROLE-BASED COCKPIT VIEWS
+// ============================================
+
+let currentRole = 'operations';
+
+function switchRole() {
+    const select = document.getElementById('role-select');
+    const role = select?.value || 'operations';
+    currentRole = role;
+
+    // Hide all role views
+    document.querySelectorAll('.cockpit-role-view').forEach(view => {
+        view.classList.add('hidden');
+    });
+    document.querySelectorAll('.cockpit-content-view').forEach(view => {
+        view.classList.add('hidden');
+    });
+
+    // Show selected role view
+    const roleView = document.getElementById(`cockpit-${role}`);
+    const contentView = document.getElementById(`content-${role}`);
+
+    if (roleView) roleView.classList.remove('hidden');
+    if (contentView) contentView.classList.remove('hidden');
+
+    // Load role-specific data
+    loadRoleData(role);
+}
+
+async function loadRoleData(role) {
+    switch (role) {
+        case 'operations':
+            loadOperationsData();
+            break;
+        case 'finance':
+            loadFinanceData();
+            break;
+        case 'driver':
+            loadDriverData();
+            break;
+        case 'admin':
+            loadAdminData();
+            break;
+    }
+}
+
+function loadOperationsData() {
+    // Already loaded by loadCockpitData()
+    renderCockpitMetrics();
+    renderActiveTransports();
+}
+
+function loadFinanceData() {
+    // Load finance-specific metrics
+    if (!reconciliationData || reconciliationData.length === 0) {
+        loadReconciliation().then(() => {
+            renderFinanceMetrics();
+            renderFinanceVariances();
+        });
+    } else {
+        renderFinanceMetrics();
+        renderFinanceVariances();
+    }
+}
+
+function renderFinanceMetrics() {
+    const reconciled = reconciliationData.filter(r => r.status === 'matched').length;
+    const variances = reconciliationData.filter(r => r.status === 'variance').length;
+    const financialImpact = reconciliationData
+        .filter(r => r.variance !== null)
+        .reduce((sum, r) => sum + Math.abs(r.variance) * 2.5, 0);
+
+    document.getElementById('metric-finance-reconciled').textContent = reconciled;
+    document.getElementById('metric-finance-variances').textContent = variances;
+    document.getElementById('metric-finance-impact').textContent = `€${financialImpact.toFixed(2)}`;
+    document.getElementById('metric-finance-disputes').textContent = '2'; // Mock data
+
+    // Financial summary
+    const receivables = variances * 2.5;
+    const payables = 15.75; // Mock
+    const disputed = 25.00; // Mock
+
+    document.getElementById('finance-receivables').textContent = `€${receivables.toFixed(2)}`;
+    document.getElementById('finance-payables').textContent = `€${payables.toFixed(2)}`;
+    document.getElementById('finance-disputed').textContent = `€${disputed.toFixed(2)}`;
+    document.getElementById('finance-net').textContent = `€${(receivables - payables).toFixed(2)}`;
+}
+
+function renderFinanceVariances() {
+    const container = document.getElementById('finance-variances-list');
+    if (!container) return;
+
+    const variances = reconciliationData.filter(r => r.status === 'variance').slice(0, 5);
+
+    if (variances.length === 0) {
+        container.innerHTML = `
+            <div style="padding: 2rem; text-align: center; color: var(--text-tertiary);">
+                <i class="ri-checkbox-circle-line" style="font-size: 3rem; color: var(--accent-success); opacity: 0.3;"></i>
+                <p style="margin-top: 1rem;">No variances found</p>
+                <p style="font-size: 0.875rem; margin-top: 0.5rem;">All equipment movements are reconciled</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = variances.map(v => {
+        const financialImpact = Math.abs(v.variance) * 2.5;
+        return `
+            <div class="variance-card">
+                <div class="variance-info">
+                    <h4>${v.bookingNumber}</h4>
+                    <p>${v.origin} → ${v.destination} • ${v.equipmentType} Pallets</p>
+                </div>
+                <div class="variance-amount">
+                    <div class="variance-qty">${v.variance > 0 ? '+' : ''}${v.variance}</div>
+                    <div class="variance-value">€${financialImpact.toFixed(2)}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function loadDriverData() {
+    // Load driver-specific data (today's tasks)
+    const driverPickups = inboxTasks.filter(t => t.title.includes('Pickup')).length;
+    const driverDeliveries = inboxTasks.filter(t => t.title.includes('Deliver')).length;
+    const equipmentOnTruck = 66; // Mock data
+
+    document.getElementById('driver-pickups').textContent = driverPickups || 3;
+    document.getElementById('driver-deliveries').textContent = driverDeliveries || 2;
+    document.getElementById('driver-equipment').textContent = equipmentOnTruck;
+
+    renderDriverTasks();
+}
+
+function renderDriverTasks() {
+    const container = document.getElementById('driver-tasks-list');
+    if (!container) return;
+
+    // Create driver-friendly task cards
+    const driverTasks = [
+        {
+            type: 'pickup',
+            location: 'Warehouse Munich',
+            address: 'Industriestraße 45, 80331 München',
+            equipment: '33x EUR Pallets',
+            time: '09:00 - 11:00',
+            contact: '+49 89 1234567'
+        },
+        {
+            type: 'delivery',
+            location: 'Distribution Berlin',
+            address: 'Hauptstraße 123, 10115 Berlin',
+            equipment: '28x EUR Pallets',
+            time: '14:00 - 16:00',
+            contact: '+49 30 9876543'
+        },
+        {
+            type: 'pickup',
+            location: 'EDEKA Hub Nord',
+            address: 'Nordring 88, 20095 Hamburg',
+            equipment: '42x H1 Plastic Pallets',
+            time: '10:30 - 12:00',
+            contact: '+49 40 5551234'
+        }
+    ];
+
+    container.innerHTML = driverTasks.map(task => {
+        const icon = task.type === 'pickup' ? 'ri-map-pin-add-line' : 'ri-checkbox-circle-line';
+        return `
+            <div class="driver-task-card">
+                <div class="driver-task-header">
+                    <span class="driver-task-type ${task.type}">
+                        <i class="${icon}"></i>
+                        ${task.type}
+                    </span>
+                    <span style="font-size: 0.875rem; color: var(--text-tertiary);">${task.time}</span>
+                </div>
+                <div class="driver-task-location">${task.location}</div>
+                <div class="driver-task-details">
+                    <div><i class="ri-map-pin-line"></i> ${task.address}</div>
+                    <div><i class="ri-stack-line"></i> ${task.equipment}</div>
+                    <div><i class="ri-phone-line"></i> ${task.contact}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function loadAdminData() {
+    // Load admin-specific data
+    const totalBookings = currentBookings?.length || 0;
+    document.getElementById('metric-admin-bookings').textContent = totalBookings;
+
+    renderAdminActivity();
+}
+
+function renderAdminActivity() {
+    const container = document.getElementById('admin-activity');
+    if (!container) return;
+
+    const activities = [
+        { user: 'Hans Müller', action: 'completed delivery BK-2026-0003', time: '5 min ago', icon: 'ri-checkbox-circle-line' },
+        { user: 'Finance Dept', action: 'resolved variance BK-2026-0001', time: '12 min ago', icon: 'ri-check-double-line' },
+        { user: 'Maria Schmidt', action: 'created new booking BK-2026-0008', time: '23 min ago', icon: 'ri-file-add-line' },
+        { user: 'System', action: 'reconciliation run completed', time: '1 hour ago', icon: 'ri-refresh-line' },
+        { user: 'Klaus Weber', action: 'uploaded POD document', time: '1 hour ago', icon: 'ri-file-upload-line' }
+    ];
+
+    container.innerHTML = activities.map(activity => {
+        return `
+            <div class="activity-item">
+                <div class="activity-icon">
+                    <i class="${activity.icon}"></i>
+                </div>
+                <div class="activity-content">
+                    <span class="activity-user">${activity.user}</span>
+                    <span class="activity-action">${activity.action}</span>
+                </div>
+                <div class="activity-time">${activity.time}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+// ============================================
 // MODAL INTERACTIONS
 // ============================================
 
@@ -887,17 +1113,195 @@ function triggerReconciliation() {
 
 function resolveVariance(bookingNumber) {
     console.log('Resolving variance for:', bookingNumber);
-    alert(`Variance Resolution Flow:\n\n1. Review evidence (POD, scans)\n2. Determine root cause\n3. Create ledger adjustment\n4. Update reconciliation status\n\nIn production, this would open a detailed resolution modal.`);
+
+    // Find the reconciliation record
+    const recon = reconciliationData.find(r => r.bookingNumber === bookingNumber);
+    if (!recon) {
+        alert('Reconciliation data not found');
+        return;
+    }
+
+    // Use reconciliation engine to generate recommendations
+    if (!window.ReconciliationEngine) {
+        alert('Reconciliation engine not loaded');
+        return;
+    }
+
+    const analysis = window.ReconciliationEngine.analyzeVariance({
+        ...recon,
+        distance: 250 // Mock distance, would come from booking data
+    });
+
+    showRecommendationsModal(recon, analysis);
+}
+
+function showRecommendationsModal(recon, analysis) {
+    const modal = document.getElementById('recommendations-modal');
+    const content = document.getElementById('recommendations-content');
+
+    if (!modal || !content) return;
+
+    // Build recommendations HTML
+    const severityColor = {
+        'low': 'var(--accent-success)',
+        'medium': 'var(--accent-warning)',
+        'high': 'var(--accent-error)',
+        'critical': 'var(--accent-error)'
+    }[analysis.severity];
+
+    const severityLabel = analysis.severity.charAt(0).toUpperCase() + analysis.severity.slice(1);
+
+    let html = `
+        <div class="recon-analysis-header">
+            <div class="analysis-summary">
+                <h4>${recon.bookingNumber}</h4>
+                <p style="color: var(--text-secondary); margin-top: 0.25rem;">
+                    ${recon.origin} → ${recon.destination} • ${Math.abs(recon.variance)} ${recon.equipmentType} ${recon.variance > 0 ? 'surplus' : 'missing'}
+                </p>
+            </div>
+            <div class="analysis-severity" style="background: ${severityColor}15; color: ${severityColor}; padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid ${severityColor}40;">
+                <strong>${severityLabel} Priority</strong>
+                <div style="font-size: 0.875rem; margin-top: 0.25rem;">€${analysis.financialImpact.toFixed(2)} impact</div>
+            </div>
+        </div>
+
+        <div class="analysis-insights" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin: 1.5rem 0; padding: 1rem; background: var(--bg-elevated); border-radius: 6px;">
+            <div class="insight-item">
+                <div style="font-size: 0.75rem; color: var(--text-tertiary); text-transform: uppercase; margin-bottom: 0.25rem;">Load Type</div>
+                <div style="font-weight: 600; color: var(--text-primary);">
+                    ${analysis.analytics.isFTL ? 'FTL ✓' : analysis.analytics.isNearFTL ? 'Near FTL' : 'LTL'}
+                </div>
+            </div>
+            <div class="insight-item">
+                <div style="font-size: 0.75rem; color: var(--text-tertiary); text-transform: uppercase; margin-bottom: 0.25rem;">PSP Eligible</div>
+                <div style="font-weight: 600; color: var(--text-primary);">
+                    ${analysis.analytics.isPSPEligible ? 'Yes ✓' : 'No'}
+                </div>
+            </div>
+            <div class="insight-item">
+                <div style="font-size: 0.75rem; color: var(--text-tertiary); text-transform: uppercase; margin-bottom: 0.25rem;">Unit Value</div>
+                <div style="font-weight: 600; color: var(--text-primary);">
+                    €${analysis.analytics.unitValue.toFixed(2)}
+                </div>
+            </div>
+            <div class="insight-item">
+                <div style="font-size: 0.75rem; color: var(--text-tertiary); text-transform: uppercase; margin-bottom: 0.25rem;">Distance</div>
+                <div style="font-weight: 600; color: var(--text-primary);">
+                    ${analysis.analytics.distanceCategory}
+                </div>
+            </div>
+        </div>
+
+        <h4 style="margin-bottom: 1rem; color: var(--text-primary);">Resolution Options (${analysis.recommendations.length})</h4>
+        <div class="recommendations-list">
+    `;
+
+    analysis.recommendations.forEach((rec, index) => {
+        const isRecommended = rec.recommended;
+        const savingsText = rec.savings > 0 ? `Saves €${rec.savings.toFixed(2)}` : '';
+
+        html += `
+            <div class="recommendation-card ${isRecommended ? 'recommended' : ''}">
+                <div class="rec-header">
+                    <div>
+                        <h5 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                            ${rec.title}
+                            ${isRecommended ? '<span class="badge-recommended">Recommended</span>' : ''}
+                        </h5>
+                        <p style="margin: 0.5rem 0 0 0; color: var(--text-secondary); font-size: 0.875rem;">
+                            ${rec.description}
+                        </p>
+                    </div>
+                    <div class="rec-cost">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary);">
+                            €${rec.totalCost.toFixed(2)}
+                        </div>
+                        ${savingsText ? `<div style="font-size: 0.875rem; color: var(--accent-success); margin-top: 0.25rem;">${savingsText}</div>` : ''}
+                    </div>
+                </div>
+
+                <div class="rec-meta" style="display: flex; gap: 1.5rem; margin: 1rem 0; padding: 0.75rem; background: var(--bg-elevated); border-radius: 4px; font-size: 0.875rem;">
+                    <div><i class="ri-time-line"></i> <strong>Timeline:</strong> ${rec.timeline}</div>
+                    <div><i class="ri-tools-line"></i> <strong>Effort:</strong> ${rec.effort}</div>
+                </div>
+
+                <div class="rec-breakdown">
+                    <details ${index === 0 && isRecommended ? 'open' : ''}>
+                        <summary style="cursor: pointer; font-weight: 600; margin-bottom: 0.75rem; color: var(--text-primary);">
+                            <i class="ri-calculator-line"></i> Cost Breakdown
+                        </summary>
+                        <table class="breakdown-table">
+                            ${rec.breakdown.map(item => item.cost !== null ? `
+                                <tr>
+                                    <td>${item.item}</td>
+                                    <td style="text-align: right; font-weight: 600;">
+                                        ${item.cost >= 0 ? '€' + item.cost.toFixed(2) : '-€' + Math.abs(item.cost).toFixed(2)}
+                                    </td>
+                                </tr>
+                            ` : `
+                                <tr style="border: none;">
+                                    <td colspan="2" style="padding: 0.25rem 0;">${item.item}</td>
+                                </tr>
+                            `).join('')}
+                        </table>
+                    </details>
+                </div>
+
+                <div class="rec-analysis" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                    <div>
+                        <div style="font-weight: 600; color: var(--accent-success); margin-bottom: 0.5rem; font-size: 0.875rem;">
+                            <i class="ri-check-line"></i> Pros
+                        </div>
+                        <ul style="margin: 0; padding-left: 1.25rem; color: var(--text-secondary); font-size: 0.875rem;">
+                            ${rec.pros.map(pro => `<li>${pro}</li>`).join('')}
+                        </ul>
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; color: var(--accent-error); margin-bottom: 0.5rem; font-size: 0.875rem;">
+                            <i class="ri-close-line"></i> Cons
+                        </div>
+                        <ul style="margin: 0; padding-left: 1.25rem; color: var(--text-secondary); font-size: 0.875rem;">
+                            ${rec.cons.map(con => `<li>${con}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+                    <button class="btn ${isRecommended ? 'btn-primary' : 'btn-secondary'}" onclick="selectResolution('${recon.bookingNumber}', '${rec.id}')" style="width: 100%;">
+                        <i class="ri-check-line"></i> Select This Option
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+
+    html += `</div>`;
+
+    content.innerHTML = html;
+    modal.classList.remove('hidden');
+}
+
+function closeRecommendationsModal() {
+    const modal = document.getElementById('recommendations-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+function selectResolution(bookingNumber, optionId) {
+    console.log('Selected resolution:', bookingNumber, optionId);
+    alert(`Resolution Selected!\n\nBooking: ${bookingNumber}\nOption: ${optionId}\n\nIn production, this would:\n1. Create resolution workflow\n2. Assign to responsible party\n3. Update reconciliation status to "resolving"\n4. Track completion and costs`);
+    closeRecommendationsModal();
 }
 
 function createDispute(bookingNumber) {
     console.log('Creating dispute for:', bookingNumber);
-    alert(`Dispute Creation Flow:\n\n1. Document the discrepancy\n2. Assign to responsible party\n3. Set SLA timeline\n4. Lock provisional ledger entries\n\nIn production, this would create a first-class Dispute object with full lifecycle tracking.`);
+    alert(`Dispute Creation Flow:\n\nBooking: ${bookingNumber}\n\nWould create first-class Dispute object:\n1. Document the discrepancy\n2. Assign to responsible party\n3. Set SLA timeline (48h standard)\n4. Lock provisional ledger entries\n5. Collect evidence (PODs, photos, scans)\n6. Enable multi-party negotiation\n\nDispute would track full lifecycle until resolution.`);
 }
 
 function viewEvidence(bookingNumber) {
     console.log('Viewing evidence for:', bookingNumber);
-    alert(`Evidence Viewer:\n\nWould show:\n- Scanned POD documents\n- AI extraction confidence\n- Photos/signatures\n- Event timeline\n- GPS data\n\nIn production, this would open a document viewer with AI annotations.`);
+    alert(`Evidence Viewer for ${bookingNumber}:\n\nWould display:\n- Scanned POD documents with AI extraction\n- Confidence scores for each field\n- Photos with timestamps and GPS data\n- Driver signatures\n- Event timeline (pickup, transit, delivery)\n- GPS tracking data with timestamps\n- Equipment scan history\n\nAll evidence is immutable and timestamped for audit trail.`);
 }
 
 // ============================================
@@ -1058,6 +1462,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Load data from API
     console.log('Loading data from API...');
     await loadCockpitData();
+
+    // Initialize role-based view (default: operations)
+    switchRole();
 
     console.log('✓ Application ready with live data');
 });
