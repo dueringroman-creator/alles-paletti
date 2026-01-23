@@ -1113,17 +1113,195 @@ function triggerReconciliation() {
 
 function resolveVariance(bookingNumber) {
     console.log('Resolving variance for:', bookingNumber);
-    alert(`Variance Resolution Flow:\n\n1. Review evidence (POD, scans)\n2. Determine root cause\n3. Create ledger adjustment\n4. Update reconciliation status\n\nIn production, this would open a detailed resolution modal.`);
+
+    // Find the reconciliation record
+    const recon = reconciliationData.find(r => r.bookingNumber === bookingNumber);
+    if (!recon) {
+        alert('Reconciliation data not found');
+        return;
+    }
+
+    // Use reconciliation engine to generate recommendations
+    if (!window.ReconciliationEngine) {
+        alert('Reconciliation engine not loaded');
+        return;
+    }
+
+    const analysis = window.ReconciliationEngine.analyzeVariance({
+        ...recon,
+        distance: 250 // Mock distance, would come from booking data
+    });
+
+    showRecommendationsModal(recon, analysis);
+}
+
+function showRecommendationsModal(recon, analysis) {
+    const modal = document.getElementById('recommendations-modal');
+    const content = document.getElementById('recommendations-content');
+
+    if (!modal || !content) return;
+
+    // Build recommendations HTML
+    const severityColor = {
+        'low': 'var(--accent-success)',
+        'medium': 'var(--accent-warning)',
+        'high': 'var(--accent-error)',
+        'critical': 'var(--accent-error)'
+    }[analysis.severity];
+
+    const severityLabel = analysis.severity.charAt(0).toUpperCase() + analysis.severity.slice(1);
+
+    let html = `
+        <div class="recon-analysis-header">
+            <div class="analysis-summary">
+                <h4>${recon.bookingNumber}</h4>
+                <p style="color: var(--text-secondary); margin-top: 0.25rem;">
+                    ${recon.origin} → ${recon.destination} • ${Math.abs(recon.variance)} ${recon.equipmentType} ${recon.variance > 0 ? 'surplus' : 'missing'}
+                </p>
+            </div>
+            <div class="analysis-severity" style="background: ${severityColor}15; color: ${severityColor}; padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid ${severityColor}40;">
+                <strong>${severityLabel} Priority</strong>
+                <div style="font-size: 0.875rem; margin-top: 0.25rem;">€${analysis.financialImpact.toFixed(2)} impact</div>
+            </div>
+        </div>
+
+        <div class="analysis-insights" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin: 1.5rem 0; padding: 1rem; background: var(--bg-elevated); border-radius: 6px;">
+            <div class="insight-item">
+                <div style="font-size: 0.75rem; color: var(--text-tertiary); text-transform: uppercase; margin-bottom: 0.25rem;">Load Type</div>
+                <div style="font-weight: 600; color: var(--text-primary);">
+                    ${analysis.analytics.isFTL ? 'FTL ✓' : analysis.analytics.isNearFTL ? 'Near FTL' : 'LTL'}
+                </div>
+            </div>
+            <div class="insight-item">
+                <div style="font-size: 0.75rem; color: var(--text-tertiary); text-transform: uppercase; margin-bottom: 0.25rem;">PSP Eligible</div>
+                <div style="font-weight: 600; color: var(--text-primary);">
+                    ${analysis.analytics.isPSPEligible ? 'Yes ✓' : 'No'}
+                </div>
+            </div>
+            <div class="insight-item">
+                <div style="font-size: 0.75rem; color: var(--text-tertiary); text-transform: uppercase; margin-bottom: 0.25rem;">Unit Value</div>
+                <div style="font-weight: 600; color: var(--text-primary);">
+                    €${analysis.analytics.unitValue.toFixed(2)}
+                </div>
+            </div>
+            <div class="insight-item">
+                <div style="font-size: 0.75rem; color: var(--text-tertiary); text-transform: uppercase; margin-bottom: 0.25rem;">Distance</div>
+                <div style="font-weight: 600; color: var(--text-primary);">
+                    ${analysis.analytics.distanceCategory}
+                </div>
+            </div>
+        </div>
+
+        <h4 style="margin-bottom: 1rem; color: var(--text-primary);">Resolution Options (${analysis.recommendations.length})</h4>
+        <div class="recommendations-list">
+    `;
+
+    analysis.recommendations.forEach((rec, index) => {
+        const isRecommended = rec.recommended;
+        const savingsText = rec.savings > 0 ? `Saves €${rec.savings.toFixed(2)}` : '';
+
+        html += `
+            <div class="recommendation-card ${isRecommended ? 'recommended' : ''}">
+                <div class="rec-header">
+                    <div>
+                        <h5 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                            ${rec.title}
+                            ${isRecommended ? '<span class="badge-recommended">Recommended</span>' : ''}
+                        </h5>
+                        <p style="margin: 0.5rem 0 0 0; color: var(--text-secondary); font-size: 0.875rem;">
+                            ${rec.description}
+                        </p>
+                    </div>
+                    <div class="rec-cost">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary);">
+                            €${rec.totalCost.toFixed(2)}
+                        </div>
+                        ${savingsText ? `<div style="font-size: 0.875rem; color: var(--accent-success); margin-top: 0.25rem;">${savingsText}</div>` : ''}
+                    </div>
+                </div>
+
+                <div class="rec-meta" style="display: flex; gap: 1.5rem; margin: 1rem 0; padding: 0.75rem; background: var(--bg-elevated); border-radius: 4px; font-size: 0.875rem;">
+                    <div><i class="ri-time-line"></i> <strong>Timeline:</strong> ${rec.timeline}</div>
+                    <div><i class="ri-tools-line"></i> <strong>Effort:</strong> ${rec.effort}</div>
+                </div>
+
+                <div class="rec-breakdown">
+                    <details ${index === 0 && isRecommended ? 'open' : ''}>
+                        <summary style="cursor: pointer; font-weight: 600; margin-bottom: 0.75rem; color: var(--text-primary);">
+                            <i class="ri-calculator-line"></i> Cost Breakdown
+                        </summary>
+                        <table class="breakdown-table">
+                            ${rec.breakdown.map(item => item.cost !== null ? `
+                                <tr>
+                                    <td>${item.item}</td>
+                                    <td style="text-align: right; font-weight: 600;">
+                                        ${item.cost >= 0 ? '€' + item.cost.toFixed(2) : '-€' + Math.abs(item.cost).toFixed(2)}
+                                    </td>
+                                </tr>
+                            ` : `
+                                <tr style="border: none;">
+                                    <td colspan="2" style="padding: 0.25rem 0;">${item.item}</td>
+                                </tr>
+                            `).join('')}
+                        </table>
+                    </details>
+                </div>
+
+                <div class="rec-analysis" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                    <div>
+                        <div style="font-weight: 600; color: var(--accent-success); margin-bottom: 0.5rem; font-size: 0.875rem;">
+                            <i class="ri-check-line"></i> Pros
+                        </div>
+                        <ul style="margin: 0; padding-left: 1.25rem; color: var(--text-secondary); font-size: 0.875rem;">
+                            ${rec.pros.map(pro => `<li>${pro}</li>`).join('')}
+                        </ul>
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; color: var(--accent-error); margin-bottom: 0.5rem; font-size: 0.875rem;">
+                            <i class="ri-close-line"></i> Cons
+                        </div>
+                        <ul style="margin: 0; padding-left: 1.25rem; color: var(--text-secondary); font-size: 0.875rem;">
+                            ${rec.cons.map(con => `<li>${con}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+                    <button class="btn ${isRecommended ? 'btn-primary' : 'btn-secondary'}" onclick="selectResolution('${recon.bookingNumber}', '${rec.id}')" style="width: 100%;">
+                        <i class="ri-check-line"></i> Select This Option
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+
+    html += `</div>`;
+
+    content.innerHTML = html;
+    modal.classList.remove('hidden');
+}
+
+function closeRecommendationsModal() {
+    const modal = document.getElementById('recommendations-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+function selectResolution(bookingNumber, optionId) {
+    console.log('Selected resolution:', bookingNumber, optionId);
+    alert(`Resolution Selected!\n\nBooking: ${bookingNumber}\nOption: ${optionId}\n\nIn production, this would:\n1. Create resolution workflow\n2. Assign to responsible party\n3. Update reconciliation status to "resolving"\n4. Track completion and costs`);
+    closeRecommendationsModal();
 }
 
 function createDispute(bookingNumber) {
     console.log('Creating dispute for:', bookingNumber);
-    alert(`Dispute Creation Flow:\n\n1. Document the discrepancy\n2. Assign to responsible party\n3. Set SLA timeline\n4. Lock provisional ledger entries\n\nIn production, this would create a first-class Dispute object with full lifecycle tracking.`);
+    alert(`Dispute Creation Flow:\n\nBooking: ${bookingNumber}\n\nWould create first-class Dispute object:\n1. Document the discrepancy\n2. Assign to responsible party\n3. Set SLA timeline (48h standard)\n4. Lock provisional ledger entries\n5. Collect evidence (PODs, photos, scans)\n6. Enable multi-party negotiation\n\nDispute would track full lifecycle until resolution.`);
 }
 
 function viewEvidence(bookingNumber) {
     console.log('Viewing evidence for:', bookingNumber);
-    alert(`Evidence Viewer:\n\nWould show:\n- Scanned POD documents\n- AI extraction confidence\n- Photos/signatures\n- Event timeline\n- GPS data\n\nIn production, this would open a document viewer with AI annotations.`);
+    alert(`Evidence Viewer for ${bookingNumber}:\n\nWould display:\n- Scanned POD documents with AI extraction\n- Confidence scores for each field\n- Photos with timestamps and GPS data\n- Driver signatures\n- Event timeline (pickup, transit, delivery)\n- GPS tracking data with timestamps\n- Equipment scan history\n\nAll evidence is immutable and timestamped for audit trail.`);
 }
 
 // ============================================
