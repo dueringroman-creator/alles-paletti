@@ -1389,3 +1389,326 @@ body {
     background: var(--bg-dark);
     border-color: var(--text-tertiary);
 }
+
+/* ===== ROLE-BASED COCKPIT VIEWS ===== */
+
+.role-selector {
+    display: flex;
+    align-items: center;
+}
+
+.cockpit-role-view {
+    margin-bottom: 1.5rem;
+}
+
+.role-banner {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent-primary);
+    border-radius: 6px;
+    padding: 0.875rem 1.25rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.role-banner i {
+    font-size: 1.25rem;
+    color: var(--accent-primary);
+}
+
+.role-banner.finance {
+    border-left-color: var(--accent-success);
+}
+
+.role-banner.finance i {
+    color: var(--accent-success);
+}
+
+.role-banner.driver {
+    border-left-color: var(--accent-warning);
+}
+
+.role-banner.driver i {
+    color: var(--accent-warning);
+}
+
+.role-banner.admin {
+    border-left-color: var(--text-tertiary);
+}
+
+.role-banner.admin i {
+    color: var(--text-tertiary);
+}
+
+.driver-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.driver-stat-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.stat-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+    flex-shrink: 0;
+}
+
+.stat-content {
+    flex: 1;
+}
+
+.stat-value {
+    font-size: 1.875rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+    margin-bottom: 0.375rem;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.cockpit-content-view {
+    margin-top: 1rem;
+}
+
+.finance-layout {
+    max-width: 1200px;
+}
+
+.variances-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.variance-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent-error);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.variance-info h4 {
+    margin: 0 0 0.25rem 0;
+    font-size: 0.9375rem;
+    color: var(--text-primary);
+}
+
+.variance-info p {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+}
+
+.variance-amount {
+    text-align: right;
+}
+
+.variance-qty {
+    font-size: 1.375rem;
+    font-weight: 700;
+    color: var(--accent-error);
+    line-height: 1;
+}
+
+.variance-value {
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+    margin-top: 0.25rem;
+}
+
+.financial-summary {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    font-size: 0.9375rem;
+}
+
+.summary-row span {
+    color: var(--text-secondary);
+}
+
+.summary-row strong {
+    color: var(--text-primary);
+}
+
+.driver-layout {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.driver-tasks {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.driver-task-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+}
+
+.driver-task-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.driver-task-type {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: 4px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.driver-task-type.pickup {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--accent-primary);
+}
+
+.driver-task-type.delivery {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--accent-success);
+}
+
+.driver-task-location {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.driver-task-details {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.driver-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.admin-layout {
+    max-width: 1400px;
+}
+
+.admin-charts {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.chart-placeholder {
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.activity-item {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.875rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.875rem;
+}
+
+.activity-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--bg-elevated);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent-primary);
+    flex-shrink: 0;
+}
+
+.activity-content {
+    flex: 1;
+}
+
+.activity-user {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.activity-action {
+    color: var(--text-secondary);
+}
+
+.activity-time {
+    color: var(--text-tertiary);
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
+/* ===== ANIMATIONS ===== */
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}

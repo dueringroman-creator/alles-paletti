@@ -628,6 +628,232 @@ function switchTab(id) {
 }
 
 // ============================================
+// ROLE-BASED COCKPIT VIEWS
+// ============================================
+
+let currentRole = 'operations';
+
+function switchRole() {
+    const select = document.getElementById('role-select');
+    const role = select?.value || 'operations';
+    currentRole = role;
+
+    // Hide all role views
+    document.querySelectorAll('.cockpit-role-view').forEach(view => {
+        view.classList.add('hidden');
+    });
+    document.querySelectorAll('.cockpit-content-view').forEach(view => {
+        view.classList.add('hidden');
+    });
+
+    // Show selected role view
+    const roleView = document.getElementById(`cockpit-${role}`);
+    const contentView = document.getElementById(`content-${role}`);
+
+    if (roleView) roleView.classList.remove('hidden');
+    if (contentView) contentView.classList.remove('hidden');
+
+    // Load role-specific data
+    loadRoleData(role);
+}
+
+async function loadRoleData(role) {
+    switch (role) {
+        case 'operations':
+            loadOperationsData();
+            break;
+        case 'finance':
+            loadFinanceData();
+            break;
+        case 'driver':
+            loadDriverData();
+            break;
+        case 'admin':
+            loadAdminData();
+            break;
+    }
+}
+
+function loadOperationsData() {
+    // Already loaded by loadCockpitData()
+    renderCockpitMetrics();
+    renderActiveTransports();
+}
+
+function loadFinanceData() {
+    // Load finance-specific metrics
+    if (!reconciliationData || reconciliationData.length === 0) {
+        loadReconciliation().then(() => {
+            renderFinanceMetrics();
+            renderFinanceVariances();
+        });
+    } else {
+        renderFinanceMetrics();
+        renderFinanceVariances();
+    }
+}
+
+function renderFinanceMetrics() {
+    const reconciled = reconciliationData.filter(r => r.status === 'matched').length;
+    const variances = reconciliationData.filter(r => r.status === 'variance').length;
+    const financialImpact = reconciliationData
+        .filter(r => r.variance !== null)
+        .reduce((sum, r) => sum + Math.abs(r.variance) * 2.5, 0);
+
+    document.getElementById('metric-finance-reconciled').textContent = reconciled;
+    document.getElementById('metric-finance-variances').textContent = variances;
+    document.getElementById('metric-finance-impact').textContent = `€${financialImpact.toFixed(2)}`;
+    document.getElementById('metric-finance-disputes').textContent = '2'; // Mock data
+
+    // Financial summary
+    const receivables = variances * 2.5;
+    const payables = 15.75; // Mock
+    const disputed = 25.00; // Mock
+
+    document.getElementById('finance-receivables').textContent = `€${receivables.toFixed(2)}`;
+    document.getElementById('finance-payables').textContent = `€${payables.toFixed(2)}`;
+    document.getElementById('finance-disputed').textContent = `€${disputed.toFixed(2)}`;
+    document.getElementById('finance-net').textContent = `€${(receivables - payables).toFixed(2)}`;
+}
+
+function renderFinanceVariances() {
+    const container = document.getElementById('finance-variances-list');
+    if (!container) return;
+
+    const variances = reconciliationData.filter(r => r.status === 'variance').slice(0, 5);
+
+    if (variances.length === 0) {
+        container.innerHTML = `
+            <div style="padding: 2rem; text-align: center; color: var(--text-tertiary);">
+                <i class="ri-checkbox-circle-line" style="font-size: 3rem; color: var(--accent-success); opacity: 0.3;"></i>
+                <p style="margin-top: 1rem;">No variances found</p>
+                <p style="font-size: 0.875rem; margin-top: 0.5rem;">All equipment movements are reconciled</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = variances.map(v => {
+        const financialImpact = Math.abs(v.variance) * 2.5;
+        return `
+            <div class="variance-card">
+                <div class="variance-info">
+                    <h4>${v.bookingNumber}</h4>
+                    <p>${v.origin} → ${v.destination} • ${v.equipmentType} Pallets</p>
+                </div>
+                <div class="variance-amount">
+                    <div class="variance-qty">${v.variance > 0 ? '+' : ''}${v.variance}</div>
+                    <div class="variance-value">€${financialImpact.toFixed(2)}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function loadDriverData() {
+    // Load driver-specific data (today's tasks)
+    const driverPickups = inboxTasks.filter(t => t.title.includes('Pickup')).length;
+    const driverDeliveries = inboxTasks.filter(t => t.title.includes('Deliver')).length;
+    const equipmentOnTruck = 66; // Mock data
+
+    document.getElementById('driver-pickups').textContent = driverPickups || 3;
+    document.getElementById('driver-deliveries').textContent = driverDeliveries || 2;
+    document.getElementById('driver-equipment').textContent = equipmentOnTruck;
+
+    renderDriverTasks();
+}
+
+function renderDriverTasks() {
+    const container = document.getElementById('driver-tasks-list');
+    if (!container) return;
+
+    // Create driver-friendly task cards
+    const driverTasks = [
+        {
+            type: 'pickup',
+            location: 'Warehouse Munich',
+            address: 'Industriestraße 45, 80331 München',
+            equipment: '33x EUR Pallets',
+            time: '09:00 - 11:00',
+            contact: '+49 89 1234567'
+        },
+        {
+            type: 'delivery',
+            location: 'Distribution Berlin',
+            address: 'Hauptstraße 123, 10115 Berlin',
+            equipment: '28x EUR Pallets',
+            time: '14:00 - 16:00',
+            contact: '+49 30 9876543'
+        },
+        {
+            type: 'pickup',
+            location: 'EDEKA Hub Nord',
+            address: 'Nordring 88, 20095 Hamburg',
+            equipment: '42x H1 Plastic Pallets',
+            time: '10:30 - 12:00',
+            contact: '+49 40 5551234'
+        }
+    ];
+
+    container.innerHTML = driverTasks.map(task => {
+        const icon = task.type === 'pickup' ? 'ri-map-pin-add-line' : 'ri-checkbox-circle-line';
+        return `
+            <div class="driver-task-card">
+                <div class="driver-task-header">
+                    <span class="driver-task-type ${task.type}">
+                        <i class="${icon}"></i>
+                        ${task.type}
+                    </span>
+                    <span style="font-size: 0.875rem; color: var(--text-tertiary);">${task.time}</span>
+                </div>
+                <div class="driver-task-location">${task.location}</div>
+                <div class="driver-task-details">
+                    <div><i class="ri-map-pin-line"></i> ${task.address}</div>
+                    <div><i class="ri-stack-line"></i> ${task.equipment}</div>
+                    <div><i class="ri-phone-line"></i> ${task.contact}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function loadAdminData() {
+    // Load admin-specific data
+    const totalBookings = currentBookings?.length || 0;
+    document.getElementById('metric-admin-bookings').textContent = totalBookings;
+
+    renderAdminActivity();
+}
+
+function renderAdminActivity() {
+    const container = document.getElementById('admin-activity');
+    if (!container) return;
+
+    const activities = [
+        { user: 'Hans Müller', action: 'completed delivery BK-2026-0003', time: '5 min ago', icon: 'ri-checkbox-circle-line' },
+        { user: 'Finance Dept', action: 'resolved variance BK-2026-0001', time: '12 min ago', icon: 'ri-check-double-line' },
+        { user: 'Maria Schmidt', action: 'created new booking BK-2026-0008', time: '23 min ago', icon: 'ri-file-add-line' },
+        { user: 'System', action: 'reconciliation run completed', time: '1 hour ago', icon: 'ri-refresh-line' },
+        { user: 'Klaus Weber', action: 'uploaded POD document', time: '1 hour ago', icon: 'ri-file-upload-line' }
+    ];
+
+    container.innerHTML = activities.map(activity => {
+        return `
+            <div class="activity-item">
+                <div class="activity-icon">
+                    <i class="${activity.icon}"></i>
+                </div>
+                <div class="activity-content">
+                    <span class="activity-user">${activity.user}</span>
+                    <span class="activity-action">${activity.action}</span>
+                </div>
+                <div class="activity-time">${activity.time}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+// ============================================
 // MODAL INTERACTIONS
 // ============================================
 
@@ -1058,6 +1284,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Load data from API
     console.log('Loading data from API...');
     await loadCockpitData();
+
+    // Initialize role-based view (default: operations)
+    switchRole();
 
     console.log('✓ Application ready with live data');
 });
