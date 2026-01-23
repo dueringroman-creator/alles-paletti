@@ -158,9 +158,95 @@
         </div>
 
         <div id="view-balances" class="view hidden">
-            <header><h1>Reconciliation & Compensation</h1></header>
-            <div id="balance-grid">
-                <button class="btn btn-danger" onclick="openCompensationModal()">Resolve -50 Pallet Debt</button>
+            <header>
+                <div class="header-flex">
+                    <div>
+                        <h1>Reconciliation & Settlement</h1>
+                        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.5rem;">Equipment movement verification & financial reconciliation</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="triggerReconciliation()">
+                        <i class="ri-refresh-line"></i> Run Reconciliation
+                    </button>
+                </div>
+            </header>
+
+            <!-- Reconciliation Summary -->
+            <div class="reconciliation-summary">
+                <div class="recon-card">
+                    <div class="recon-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--accent-success);">
+                        <i class="ri-checkbox-circle-line"></i>
+                    </div>
+                    <div class="recon-content">
+                        <div class="recon-value" id="recon-matched">-</div>
+                        <div class="recon-label">Matched</div>
+                    </div>
+                </div>
+                <div class="recon-card">
+                    <div class="recon-icon" style="background: rgba(239, 68, 68, 0.15); color: var(--accent-error);">
+                        <i class="ri-alert-line"></i>
+                    </div>
+                    <div class="recon-content">
+                        <div class="recon-value" id="recon-variances">-</div>
+                        <div class="recon-label">Variances</div>
+                    </div>
+                </div>
+                <div class="recon-card">
+                    <div class="recon-icon" style="background: rgba(245, 158, 11, 0.15); color: var(--accent-warning);">
+                        <i class="ri-time-line"></i>
+                    </div>
+                    <div class="recon-content">
+                        <div class="recon-value" id="recon-pending">-</div>
+                        <div class="recon-label">Pending Review</div>
+                    </div>
+                </div>
+                <div class="recon-card">
+                    <div class="recon-icon" style="background: rgba(59, 130, 246, 0.15); color: var(--accent-primary);">
+                        <i class="ri-money-euro-circle-line"></i>
+                    </div>
+                    <div class="recon-content">
+                        <div class="recon-value" id="recon-financial">-</div>
+                        <div class="recon-label">Financial Impact</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reconciliation Table -->
+            <div class="reconciliation-table">
+                <div class="table-header">
+                    <h3><i class="ri-list-check"></i> Booking Reconciliation</h3>
+                    <div class="table-filters">
+                        <select id="recon-filter-status" onchange="filterReconciliation()">
+                            <option value="all">All Status</option>
+                            <option value="variance">Variances Only</option>
+                            <option value="matched">Matched</option>
+                            <option value="pending">Pending</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="recon-table-scroll" id="reconciliation-list">
+                    <table class="recon-table">
+                        <thead>
+                            <tr>
+                                <th>Booking</th>
+                                <th>Equipment</th>
+                                <th>Expected</th>
+                                <th>Observed</th>
+                                <th>Variance</th>
+                                <th>Status</th>
+                                <th>Evidence</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recon-table-body">
+                            <tr>
+                                <td colspan="8" style="text-align: center; padding: 3rem; color: var(--text-tertiary);">
+                                    Loading reconciliation data...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </main>

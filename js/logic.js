@@ -595,6 +595,8 @@ function switchTab(id) {
         renderBookingMatrix();
     } else if (id === 'cockpit') {
         loadCockpitData();
+    } else if (id === 'balances') {
+        loadReconciliation();
     }
 }
 
@@ -676,6 +678,199 @@ function handleTaskClick(taskId) {
     setTimeout(() => {
         event.currentTarget.style.opacity = '1';
     }, 200);
+}
+
+// ============================================
+// RECONCILIATION VIEW
+// ============================================
+
+let reconciliationData = [];
+
+async function loadReconciliation() {
+    // Generate reconciliation data from bookings
+    // In production, this would come from a dedicated API endpoint
+    try {
+        if (!currentBookings || currentBookings.length === 0) {
+            await loadBookings();
+        }
+
+        reconciliationData = currentBookings.map((booking, index) => {
+            const expectedQty = booking.quantity || 33;
+            // Simulate some variances for demo purposes
+            const hasVariance = index % 3 === 0; // Every 3rd booking has a variance
+            const varianceAmount = hasVariance ? (index % 2 === 0 ? -5 : 3) : 0;
+            const observedQty = expectedQty + varianceAmount;
+
+            return {
+                bookingId: booking.id,
+                bookingNumber: booking.bookingNumber,
+                equipmentType: booking.equipmentType || 'EUR',
+                expected: expectedQty,
+                observed: booking.status === 'delivered' ? observedQty : null,
+                variance: booking.status === 'delivered' ? varianceAmount : null,
+                status: booking.status === 'delivered'
+                    ? (varianceAmount === 0 ? 'matched' : 'variance')
+                    : 'pending',
+                hasEvidence: booking.status === 'delivered',
+                origin: booking.origin.name,
+                destination: booking.destination.name,
+                carrier: booking.carrier.name
+            };
+        });
+
+        renderReconciliationSummary();
+        renderReconciliationTable();
+    } catch (error) {
+        console.error('Error loading reconciliation:', error);
+    }
+}
+
+function renderReconciliationSummary() {
+    const matched = reconciliationData.filter(r => r.status === 'matched').length;
+    const variances = reconciliationData.filter(r => r.status === 'variance').length;
+    const pending = reconciliationData.filter(r => r.status === 'pending').length;
+
+    // Calculate financial impact (€2.50 per pallet variance for demo)
+    const financialImpact = reconciliationData
+        .filter(r => r.variance !== null)
+        .reduce((sum, r) => sum + Math.abs(r.variance) * 2.5, 0);
+
+    document.getElementById('recon-matched').textContent = matched;
+    document.getElementById('recon-variances').textContent = variances;
+    document.getElementById('recon-pending').textContent = pending;
+    document.getElementById('recon-financial').textContent = `€${financialImpact.toFixed(2)}`;
+}
+
+function renderReconciliationTable() {
+    const tbody = document.getElementById('recon-table-body');
+    if (!tbody) return;
+
+    const filterStatus = document.getElementById('recon-filter-status')?.value || 'all';
+
+    let filteredData = reconciliationData;
+    if (filterStatus !== 'all') {
+        filteredData = reconciliationData.filter(r => r.status === filterStatus);
+    }
+
+    if (filteredData.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 3rem; color: var(--text-tertiary);">
+                    No reconciliation records found
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = filteredData.map(recon => {
+        const varianceClass = recon.variance === null ? '' :
+            recon.variance === 0 ? 'zero' :
+            recon.variance > 0 ? 'positive' : 'negative';
+
+        const varianceDisplay = recon.variance === null ? '-' :
+            recon.variance === 0 ? '0' :
+            recon.variance > 0 ? `+${recon.variance}` : recon.variance;
+
+        const statusIcon = recon.status === 'matched' ? 'ri-checkbox-circle-line' :
+            recon.status === 'variance' ? 'ri-alert-line' : 'ri-time-line';
+
+        return `
+            <tr>
+                <td>
+                    <div style="font-weight: 600;">${recon.bookingNumber}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-tertiary); margin-top: 0.125rem;">
+                        ${recon.origin} → ${recon.destination}
+                    </div>
+                </td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 0.375rem;">
+                        <i class="ri-stack-line" style="color: var(--text-tertiary);"></i>
+                        ${recon.equipmentType}
+                    </div>
+                </td>
+                <td>
+                    <strong>${recon.expected}</strong> units
+                </td>
+                <td>
+                    ${recon.observed !== null ? `<strong>${recon.observed}</strong> units` :
+                      '<span style="color: var(--text-tertiary);">Not delivered</span>'}
+                </td>
+                <td>
+                    <span class="variance-value ${varianceClass}">
+                        ${varianceDisplay}
+                    </span>
+                </td>
+                <td>
+                    <span class="recon-status-badge ${recon.status}">
+                        <i class="${statusIcon}"></i>
+                        ${recon.status}
+                    </span>
+                </td>
+                <td>
+                    ${recon.hasEvidence ? `
+                        <a href="#" class="evidence-link" onclick="viewEvidence('${recon.bookingNumber}'); return false;">
+                            <i class="ri-file-text-line"></i>
+                            POD
+                        </a>
+                    ` : '<span style="color: var(--text-tertiary);">—</span>'}
+                </td>
+                <td>
+                    <div class="action-buttons">
+                        ${recon.status === 'variance' ? `
+                            <button class="btn-icon" onclick="resolveVariance('${recon.bookingNumber}')" title="Resolve">
+                                <i class="ri-check-line"></i>
+                            </button>
+                            <button class="btn-icon" onclick="createDispute('${recon.bookingNumber}')" title="Create Dispute">
+                                <i class="ri-flag-line"></i>
+                            </button>
+                        ` : recon.status === 'matched' ? `
+                            <button class="btn-icon" disabled title="Matched">
+                                <i class="ri-check-line"></i>
+                            </button>
+                        ` : `
+                            <span style="color: var(--text-tertiary);">—</span>
+                        `}
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function filterReconciliation() {
+    renderReconciliationTable();
+}
+
+function triggerReconciliation() {
+    console.log('Running reconciliation...');
+    loadReconciliation();
+
+    // Show visual feedback
+    const btn = event.target.closest('.btn');
+    const originalHTML = btn.innerHTML;
+    btn.innerHTML = '<i class="ri-loader-4-line" style="animation: spin 1s linear infinite;"></i> Running...';
+    btn.disabled = true;
+
+    setTimeout(() => {
+        btn.innerHTML = originalHTML;
+        btn.disabled = false;
+    }, 1500);
+}
+
+function resolveVariance(bookingNumber) {
+    console.log('Resolving variance for:', bookingNumber);
+    alert(`Variance Resolution Flow:\n\n1. Review evidence (POD, scans)\n2. Determine root cause\n3. Create ledger adjustment\n4. Update reconciliation status\n\nIn production, this would open a detailed resolution modal.`);
+}
+
+function createDispute(bookingNumber) {
+    console.log('Creating dispute for:', bookingNumber);
+    alert(`Dispute Creation Flow:\n\n1. Document the discrepancy\n2. Assign to responsible party\n3. Set SLA timeline\n4. Lock provisional ledger entries\n\nIn production, this would create a first-class Dispute object with full lifecycle tracking.`);
+}
+
+function viewEvidence(bookingNumber) {
+    console.log('Viewing evidence for:', bookingNumber);
+    alert(`Evidence Viewer:\n\nWould show:\n- Scanned POD documents\n- AI extraction confidence\n- Photos/signatures\n- Event timeline\n- GPS data\n\nIn production, this would open a document viewer with AI annotations.`);
 }
 
 // ============================================
