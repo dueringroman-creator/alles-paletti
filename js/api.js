@@ -79,6 +79,22 @@ const api = {
       return [];
     }
   },
+
+  // Create a new booking
+  async createBooking(bookingData) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/bookings/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bookingData),
+      });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      return { success: false, error: error.message };
+    }
+  },
 };
 
 // Export API to global scope for use in other files
