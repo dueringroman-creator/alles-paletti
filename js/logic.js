@@ -1,92 +1,128 @@
 // ============================================
-// DATA MODELS
+// DATA MODELS (Now loaded from API)
 // ============================================
 
-const bookingData = {
+let bookingData = {
     physical: [
-        { title: "BMW Munich", desc: "Origin" },
-        { title: "In Transit", desc: "A8 Highway" },
-        { title: "Hamburg", desc: "Destination" }
+        { title: "Loading...", desc: "Fetching data" }
     ],
     liability: [
-        { title: "Carrier X", desc: "Has Custody" },
-        { title: "Customer", desc: "Received Goods" },
-        // The Branch Node
-        { title: "PSP Return", desc: "Dachser Depot", type: "psp-branch" }
+        { title: "Loading...", desc: "Fetching data" }
     ]
 };
 
-const inboxTasks = [
-    {
-        id: 1,
-        title: "Critical: 12 EUR Pallets Missing",
-        location: "Hamburg Depot",
-        priority: "critical",
-        type: "exception"
-    },
-    {
-        id: 2,
-        title: "Shipment #3421 Delayed by 2hrs",
-        location: "A8 Highway",
-        priority: "warning",
-        type: "delay"
-    },
-    {
-        id: 3,
-        title: "Customer Email: Delivery Confirmation",
-        location: "BMW Munich",
-        priority: "normal",
-        type: "email"
-    },
-    {
-        id: 4,
-        title: "PSP Pickup Request Pending",
-        location: "Dachser Depot",
-        priority: "normal",
-        type: "task"
-    },
-    {
-        id: 5,
-        title: "Balance Reconciliation Required",
-        location: "Regional Transport",
-        priority: "warning",
-        type: "financial"
-    }
-];
-
-// Map locations with coordinates
-const mapLocations = [
-    {
-        name: "BMW Munich",
-        coords: [48.1351, 11.5820],
-        status: "normal",
-        type: "origin",
-        info: "Origin: 33 EUR Pallets loaded"
-    },
-    {
-        name: "Hamburg Depot",
-        coords: [53.5511, 9.9937],
-        status: "critical",
-        type: "exception",
-        info: "Critical: 12 EUR Pallets Missing"
-    },
-    {
-        name: "A8 Highway (In Transit)",
-        coords: [50.5, 10.5],
-        status: "warning",
-        type: "active",
-        info: "Shipment #3421 - Delayed by 2hrs"
-    },
-    {
-        name: "Dachser Depot",
-        coords: [48.7758, 9.1829],
-        status: "normal",
-        type: "psp",
-        info: "PSP Return: Awaiting pickup"
-    }
-];
+let inboxTasks = [];
+let mapLocations = [];
+let currentBookings = [];
 
 let map = null;
+
+// ============================================
+// API DATA LOADING
+// ============================================
+
+async function loadBookings() {
+    try {
+        const bookings = await window.logistikbudeAPI.getBookings();
+        currentBookings = bookings;
+
+        if (bookings && bookings.length > 0) {
+            const firstBooking = bookings[0];
+
+            // Update booking data for swimlanes
+            bookingData = {
+                physical: [
+                    { title: firstBooking.origin.name, desc: "Origin" },
+                    { title: "In Transit", desc: `${firstBooking.progress}% Complete` },
+                    { title: firstBooking.destination.name, desc: "Destination" }
+                ],
+                liability: [
+                    { title: firstBooking.carrier.name, desc: "Has Custody" },
+                    { title: firstBooking.consignee.name, desc: "Will Receive" }
+                ]
+            };
+
+            // Update map locations from bookings
+            mapLocations = bookings.map(booking => ({
+                name: booking.origin.name,
+                coords: [booking.origin.coordinates[0] / 10, booking.origin.coordinates[1]], // Fix coordinate scale
+                status: booking.status === 'in_transit' ? 'warning' : booking.status === 'delivered' ? 'normal' : 'critical',
+                type: 'origin',
+                info: `${booking.bookingNumber} - ${booking.status}`
+            }));
+        }
+
+        renderBooking();
+        if (map) {
+            updateMapMarkers();
+        }
+    } catch (error) {
+        console.error('Error loading bookings:', error);
+    }
+}
+
+async function loadTasks() {
+    try {
+        const tasks = await window.logistikbudeAPI.getTasks();
+
+        // Transform API tasks to match UI format
+        inboxTasks = tasks.map(task => ({
+            id: task.id,
+            title: task.title,
+            location: task.companyName || 'Unknown',
+            priority: task.priority,
+            type: task.category,
+            status: task.status
+        }));
+
+        renderInboxTasks();
+    } catch (error) {
+        console.error('Error loading tasks:', error);
+    }
+}
+
+async function completeTask(taskId) {
+    try {
+        const result = await window.logistikbudeAPI.completeTask(taskId, 'Demo User', 'Completed via UI');
+
+        if (result.success) {
+            // Show success feedback
+            showToast('✓ Task completed successfully!', 'success');
+
+            // Reload tasks to reflect changes
+            await loadTasks();
+        } else {
+            showToast('✗ Failed to complete task', 'error');
+        }
+    } catch (error) {
+        console.error('Error completing task:', error);
+        showToast('✗ Error completing task', 'error');
+    }
+}
+
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.textContent = message;
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 24px;
+        background: ${type === 'success' ? '#22c55e' : type === 'error' ? '#ef4444' : '#3b82f6'};
+        color: white;
+        border-radius: 6px;
+        font-weight: 500;
+        z-index: 10000;
+        animation: slideIn 0.3s ease-out;
+    `;
+
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
 
 // ============================================
 // RENDERING FUNCTIONS
@@ -118,13 +154,29 @@ function renderInboxTasks() {
     const taskList = document.getElementById('task-list');
     if (!taskList) return;
 
-    taskList.innerHTML = inboxTasks.map(task => {
-        const priorityClass = task.priority === 'critical' ? 'critical' :
-                             task.priority === 'warning' ? 'warning' : '';
+    if (inboxTasks.length === 0) {
+        taskList.innerHTML = '<div style="padding: 1rem; text-align: center; color: #64748b;">Loading tasks...</div>';
+        return;
+    }
 
-        return `<div class="task-item ${priorityClass}" onclick="handleTaskClick(${task.id})">
-            <div style="font-weight: 600; margin-bottom: 0.25rem;">${task.title}</div>
-            <div style="font-size: 0.75rem; color: #64748b;">📍 ${task.location}</div>
+    taskList.innerHTML = inboxTasks.map(task => {
+        const priorityClass = task.priority === 'urgent' ? 'critical' :
+                             task.priority === 'high' || task.priority === 'warning' ? 'warning' : '';
+
+        const isCompleted = task.status === 'completed';
+        const opacity = isCompleted ? 'opacity: 0.5;' : '';
+
+        return `<div class="task-item ${priorityClass}" style="${opacity}">
+            <div onclick="handleTaskClick(${task.id})" style="flex: 1; cursor: pointer;">
+                <div style="font-weight: 600; margin-bottom: 0.25rem;">${task.title}</div>
+                <div style="font-size: 0.75rem; color: #64748b;">📍 ${task.location}</div>
+            </div>
+            ${!isCompleted ? `
+                <button onclick="event.stopPropagation(); completeTask(${task.id})"
+                        style="padding: 4px 12px; background: #22c55e; color: white; border: none; border-radius: 4px; font-size: 0.75rem; cursor: pointer; margin-left: 8px;">
+                    ✓ Complete
+                </button>
+            ` : '<span style="font-size: 0.75rem; color: #22c55e; margin-left: 8px;">✓ Done</span>'}
         </div>`;
     }).join('');
 }
@@ -316,25 +368,83 @@ function initMap() {
     console.log('✓ Map initialized with', mapLocations.length, 'locations');
 }
 
+function updateMapMarkers() {
+    if (!map) return;
+
+    // Clear existing markers
+    map.eachLayer(layer => {
+        if (layer instanceof L.Marker) {
+            map.removeLayer(layer);
+        }
+    });
+
+    // Add location markers from API data
+    mapLocations.forEach(loc => {
+        let markerColor = '#3b82f6';
+        if (loc.status === 'critical') markerColor = '#ef4444';
+        if (loc.status === 'warning') markerColor = '#eab308';
+        if (loc.status === 'normal') markerColor = '#22c55e';
+
+        const iconHtml = loc.status === 'critical' || loc.status === 'warning' ?
+            `<div style="
+                width: 20px;
+                height: 20px;
+                background: ${markerColor};
+                border-radius: 50%;
+                border: 3px solid white;
+                box-shadow: 0 0 20px ${markerColor};
+                animation: pulse 2s infinite;
+            "></div>` :
+            `<div style="
+                width: 16px;
+                height: 16px;
+                background: ${markerColor};
+                border-radius: 50%;
+                border: 2px solid white;
+            "></div>`;
+
+        const customIcon = L.divIcon({
+            html: iconHtml,
+            className: 'custom-marker',
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+        });
+
+        const marker = L.marker(loc.coords, { icon: customIcon }).addTo(map);
+
+        marker.bindPopup(`
+            <div style="font-family: sans-serif;">
+                <h4 style="margin: 0 0 0.5rem 0; color: ${markerColor};">${loc.name}</h4>
+                <p style="margin: 0; font-size: 0.875rem;">${loc.info}</p>
+            </div>
+        `);
+
+        if (loc.status === 'critical') {
+            marker.openPopup();
+        }
+    });
+}
+
 // ============================================
 // INITIALIZATION
 // ============================================
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     console.log('Logistikbude 3.0 - Initializing...');
 
-    // Render booking swimlanes
+    // Show initial loading state
     renderBooking();
-
-    // Render inbox tasks
     renderInboxTasks();
 
-    // Initialize map
+    // Initialize map first
     initMap();
 
-    console.log('✓ Application ready');
-});
+    // Load data from API
+    console.log('Loading data from API...');
+    await Promise.all([
+        loadBookings(),
+        loadTasks()
+    ]);
 
-// Also call renders immediately in case DOMContentLoaded already fired
-renderBooking();
-renderInboxTasks();
+    console.log('✓ Application ready with live data');
+});
