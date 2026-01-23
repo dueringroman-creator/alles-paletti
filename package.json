@@ -1,0 +1,22 @@
+{
+  "name": "logistikbude-api",
+  "version": "1.0.0",
+  "description": "Serverless API for Logistikbude demo with Google Sheets backend",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "keywords": [
+    "logistics",
+    "api",
+    "serverless",
+    "google-sheets"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "googleapis": "^128.0.0"
+  },
+  "devDependencies": {}
+}
