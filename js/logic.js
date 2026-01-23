@@ -28,21 +28,6 @@ async function loadBookings() {
         currentBookings = bookings;
 
         if (bookings && bookings.length > 0) {
-            const firstBooking = bookings[0];
-
-            // Update booking data for swimlanes
-            bookingData = {
-                physical: [
-                    { title: firstBooking.origin.name, desc: "Origin" },
-                    { title: "In Transit", desc: `${firstBooking.progress}% Complete` },
-                    { title: firstBooking.destination.name, desc: "Destination" }
-                ],
-                liability: [
-                    { title: firstBooking.carrier.name, desc: "Has Custody" },
-                    { title: firstBooking.consignee.name, desc: "Will Receive" }
-                ]
-            };
-
             // Update map locations from bookings
             mapLocations = bookings.map(booking => ({
                 name: booking.origin.name,
@@ -53,7 +38,10 @@ async function loadBookings() {
             }));
         }
 
-        renderBooking();
+        // Render booking matrix
+        populateCarrierFilter();
+        renderBookingMatrix();
+
         if (map) {
             updateMapMarkers();
         }
@@ -247,26 +235,305 @@ function renderEventLog() {
     }).join('');
 }
 
-function renderBooking() {
-    const pLane = document.getElementById('lane-physical');
-    const lLane = document.getElementById('lane-liability');
+// ============================================
+// BOOKING MATRIX INTERFACE
+// ============================================
 
-    if (!pLane || !lLane) return;
+let selectedBookingId = null;
+let filteredBookings = [];
 
-    pLane.innerHTML = bookingData.physical.map(n =>
-        `<div class="node">
-            <h5>${n.title}</h5>
-            <p>${n.desc}</p>
-        </div>`
+function renderBookingMatrix() {
+    const container = document.getElementById('booking-list');
+    if (!container) return;
+
+    // Apply filters to get filtered bookings
+    applyFilters();
+
+    if (filteredBookings.length === 0) {
+        container.innerHTML = `
+            <div style="padding: 2rem; text-align: center; color: #64748b;">
+                <i class="ri-inbox-line" style="font-size: 3rem; opacity: 0.5;"></i>
+                <p style="margin-top: 1rem;">No bookings found</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = filteredBookings.map(booking => {
+        const isSelected = booking.id === selectedBookingId;
+        const statusClass = booking.status || 'pending';
+
+        // Get equipment type display
+        const equipmentType = booking.equipmentType || 'EUR';
+        const quantity = booking.quantity || 33;
+
+        return `
+            <div class="booking-card ${isSelected ? 'selected' : ''}" onclick="selectBooking(${booking.id})">
+                <div class="booking-card-header">
+                    <div class="booking-number">${booking.bookingNumber}</div>
+                    <div class="booking-status-badge ${statusClass}">
+                        ${statusClass === 'in_transit' ? 'In Transit' :
+                          statusClass === 'delivered' ? 'Delivered' :
+                          statusClass === 'issue' ? 'Issue' : 'Pending'}
+                    </div>
+                </div>
+                <div class="booking-route">
+                    <strong>${booking.origin.name}</strong>
+                    <i class="ri-arrow-right-line"></i>
+                    <strong>${booking.destination.name}</strong>
+                </div>
+                <div class="booking-meta">
+                    <div class="booking-meta-item">
+                        <i class="ri-stack-line"></i>
+                        ${quantity}x ${equipmentType}
+                    </div>
+                    <div class="booking-meta-item">
+                        <i class="ri-truck-line"></i>
+                        ${booking.carrier.name}
+                    </div>
+                    ${booking.progress ? `
+                        <div class="booking-meta-item">
+                            <i class="ri-road-map-line"></i>
+                            ${booking.progress}% complete
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function applyFilters() {
+    const statusFilter = document.getElementById('filter-status')?.value || 'all';
+    const equipmentFilter = document.getElementById('filter-equipment')?.value || 'all';
+    const carrierFilter = document.getElementById('filter-carrier')?.value || 'all';
+    const searchFilter = document.getElementById('filter-search')?.value.toLowerCase() || '';
+
+    filteredBookings = currentBookings.filter(booking => {
+        // Status filter
+        if (statusFilter !== 'all' && booking.status !== statusFilter) return false;
+
+        // Equipment filter
+        if (equipmentFilter !== 'all' && booking.equipmentType !== equipmentFilter) return false;
+
+        // Carrier filter
+        if (carrierFilter !== 'all' && booking.carrier.name !== carrierFilter) return false;
+
+        // Search filter
+        if (searchFilter) {
+            const searchText = `${booking.bookingNumber} ${booking.origin.name} ${booking.destination.name}`.toLowerCase();
+            if (!searchText.includes(searchFilter)) return false;
+        }
+
+        return true;
+    });
+}
+
+function filterBookings() {
+    renderBookingMatrix();
+}
+
+function selectBooking(bookingId) {
+    selectedBookingId = bookingId;
+    renderBookingMatrix();
+    renderBookingDetails(bookingId);
+}
+
+function renderBookingDetails(bookingId) {
+    const container = document.getElementById('booking-details');
+    if (!container) return;
+
+    const booking = currentBookings.find(b => b.id === bookingId);
+    if (!booking) {
+        container.innerHTML = `
+            <div class="details-placeholder">
+                <i class="ri-file-list-line" style="font-size: 3rem; color: #64748b; opacity: 0.5;"></i>
+                <p style="color: #94a3b8; margin-top: 1rem;">Select a booking to view details</p>
+            </div>
+        `;
+        return;
+    }
+
+    const equipmentType = booking.equipmentType || 'EUR';
+    const quantity = booking.quantity || 33;
+    const quality = booking.quality || 'A';
+
+    container.innerHTML = `
+        <div class="details-header">
+            <h3><i class="ri-file-text-line"></i> ${booking.bookingNumber}</h3>
+            <div class="booking-status-badge ${booking.status}">
+                ${booking.status === 'in_transit' ? 'In Transit' :
+                  booking.status === 'delivered' ? 'Delivered' :
+                  booking.status === 'issue' ? 'Issue' : 'Pending'}
+            </div>
+        </div>
+
+        <div class="details-section">
+            <h4>Equipment Details</h4>
+            <div class="details-grid">
+                <div class="detail-item">
+                    <div class="detail-label">Type</div>
+                    <div class="detail-value">${equipmentType} Pallets</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Quantity</div>
+                    <div class="detail-value">${quantity} units</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Quality</div>
+                    <div class="detail-value">Grade ${quality}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Exchange Type</div>
+                    <div class="detail-value">1:1 Swap</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="details-section">
+            <h4>Route Information</h4>
+            <div class="details-grid">
+                <div class="detail-item">
+                    <div class="detail-label">Origin (Shipper)</div>
+                    <div class="detail-value">${booking.origin.name}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Destination (Consignee)</div>
+                    <div class="detail-value">${booking.destination.name}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Carrier</div>
+                    <div class="detail-value">${booking.carrier.name}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Progress</div>
+                    <div class="detail-value">${booking.progress || 0}% Complete</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="details-section">
+            <h4>Transport Timeline</h4>
+            <div class="transport-timeline">
+                <div class="timeline-item ${booking.progress >= 0 ? 'completed' : 'pending'}">
+                    <div class="timeline-content">
+                        <div class="timeline-title">Booking Created</div>
+                        <div class="timeline-meta">${booking.origin.name}</div>
+                    </div>
+                </div>
+                <div class="timeline-item ${booking.progress >= 30 ? 'completed' : booking.progress > 0 ? 'active' : 'pending'}">
+                    <div class="timeline-content">
+                        <div class="timeline-title">Picked Up by Carrier</div>
+                        <div class="timeline-meta">${booking.carrier.name} • ${quantity}x ${equipmentType}</div>
+                    </div>
+                </div>
+                <div class="timeline-item ${booking.progress >= 70 ? 'completed' : booking.progress > 30 ? 'active' : 'pending'}">
+                    <div class="timeline-content">
+                        <div class="timeline-title">In Transit</div>
+                        <div class="timeline-meta">${booking.progress || 0}% complete</div>
+                    </div>
+                </div>
+                <div class="timeline-item ${booking.status === 'delivered' ? 'completed' : 'pending'}">
+                    <div class="timeline-content">
+                        <div class="timeline-title">Delivered</div>
+                        <div class="timeline-meta">${booking.destination.name}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        ${booking.notes ? `
+            <div class="details-section">
+                <h4>Notes</h4>
+                <div class="detail-value">${booking.notes}</div>
+            </div>
+        ` : ''}
+    `;
+}
+
+function populateCarrierFilter() {
+    const carrierFilter = document.getElementById('filter-carrier');
+    if (!carrierFilter || !currentBookings) return;
+
+    // Get unique carriers
+    const carriers = [...new Set(currentBookings.map(b => b.carrier.name))];
+
+    const options = carriers.map(carrier =>
+        `<option value="${carrier}">${carrier}</option>`
     ).join('');
 
-    lLane.innerHTML = bookingData.liability.map(n => {
-        const cls = n.type === 'psp-branch' ? 'node psp' : 'node';
-        return `<div class="${cls}">
-            <h5>${n.title}</h5>
-            <p>${n.desc}</p>
-        </div>`;
-    }).join('');
+    // Keep "All Carriers" option and add unique carriers
+    carrierFilter.innerHTML = `
+        <option value="all">All Carriers</option>
+        ${options}
+    `;
+}
+
+// ============================================
+// NEW BOOKING MODAL
+// ============================================
+
+function openNewBookingModal() {
+    const modal = document.getElementById('new-booking-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+}
+
+function closeNewBookingModal() {
+    const modal = document.getElementById('new-booking-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+async function createBooking() {
+    // Get form values
+    const equipmentType = document.getElementById('new-equipment-type')?.value;
+    const quantity = document.getElementById('new-quantity')?.value;
+    const quality = document.getElementById('new-quality')?.value;
+    const origin = document.getElementById('new-origin')?.value;
+    const destination = document.getElementById('new-destination')?.value;
+    const carrier = document.getElementById('new-carrier')?.value;
+    const pickupDate = document.getElementById('new-pickup-date')?.value;
+    const deliveryDate = document.getElementById('new-delivery-date')?.value;
+    const exchangeType = document.getElementById('new-exchange-type')?.value;
+    const notes = document.getElementById('new-notes')?.value;
+
+    // Validate required fields
+    if (!equipmentType || !quantity || !origin || !destination || !carrier) {
+        alert('Please fill in all required fields (marked with *)');
+        return;
+    }
+
+    // For demo purposes, show success message
+    // In production, this would call API to create booking in Google Sheets
+    console.log('Creating booking:', {
+        equipmentType,
+        quantity,
+        quality,
+        origin,
+        destination,
+        carrier,
+        pickupDate,
+        deliveryDate,
+        exchangeType,
+        notes
+    });
+
+    alert('Booking created successfully!\n\nIn production, this would:\n1. Create a new row in Google Sheets\n2. Generate a booking number\n3. Send notifications to parties\n4. Log creation event');
+
+    closeNewBookingModal();
+
+    // Reload bookings (in production, would fetch from API)
+    await loadBookings();
+    renderBookingMatrix();
+}
+
+function renderBooking() {
+    // Legacy swimlane view - now replaced by booking matrix
+    // Keep for backwards compatibility but primary view is now the matrix
+    renderBookingMatrix();
 }
 
 function renderInboxTasks() {
@@ -320,6 +587,14 @@ function switchTab(id) {
     const targetView = document.getElementById(`view-${id}`);
     if (targetView) {
         targetView.classList.remove('hidden');
+    }
+
+    // Initialize view-specific content
+    if (id === 'bookings') {
+        populateCarrierFilter();
+        renderBookingMatrix();
+    } else if (id === 'cockpit') {
+        loadCockpitData();
     }
 }
 
