@@ -506,28 +506,55 @@ async function createBooking() {
         return;
     }
 
-    // For demo purposes, show success message
-    // In production, this would call API to create booking in Google Sheets
-    console.log('Creating booking:', {
-        equipmentType,
-        quantity,
-        quality,
-        origin,
-        destination,
-        carrier,
-        pickupDate,
-        deliveryDate,
-        exchangeType,
-        notes
-    });
+    // Show loading state
+    const btn = event.target.closest('.btn');
+    const originalHTML = btn.innerHTML;
+    btn.innerHTML = '<i class="ri-loader-4-line" style="animation: spin 1s linear infinite;"></i> Creating...';
+    btn.disabled = true;
 
-    alert('Booking created successfully!\n\nIn production, this would:\n1. Create a new row in Google Sheets\n2. Generate a booking number\n3. Send notifications to parties\n4. Log creation event');
+    try {
+        // Call API to create booking
+        const result = await window.logistikbudeAPI.createBooking({
+            equipmentType,
+            quantity: parseInt(quantity),
+            quality,
+            origin,
+            destination,
+            carrier,
+            pickupDate,
+            deliveryDate,
+            exchangeType,
+            notes,
+            createdBy: 'Web User'
+        });
 
-    closeNewBookingModal();
+        if (result.success) {
+            console.log('Booking created:', result.data);
 
-    // Reload bookings (in production, would fetch from API)
-    await loadBookings();
-    renderBookingMatrix();
+            // Show success message
+            alert(`✓ Booking Created Successfully!\n\n` +
+                  `Booking Number: ${result.data.bookingNumber}\n` +
+                  `Status: ${result.data.status}\n` +
+                  `Equipment: ${quantity}x ${equipmentType}\n` +
+                  `Route: ${origin} → ${destination}\n\n` +
+                  `An event has been logged to the Events sheet.`);
+
+            closeNewBookingModal();
+
+            // Reload bookings from API
+            await loadBookings();
+            renderBookingMatrix();
+        } else {
+            throw new Error(result.error || 'Failed to create booking');
+        }
+    } catch (error) {
+        console.error('Error creating booking:', error);
+        alert(`Error creating booking:\n${error.message}\n\nPlease try again or contact support.`);
+    } finally {
+        // Restore button state
+        btn.innerHTML = originalHTML;
+        btn.disabled = false;
+    }
 }
 
 function renderBooking() {
