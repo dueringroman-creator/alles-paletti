@@ -45,8 +45,8 @@ const api = {
     }
   },
 
-  // Update booking node
-  async updateBooking(bookingId, nodeSequence, details) {
+  // Update booking node (for progress tracking)
+  async updateBookingNode(bookingId, nodeSequence, details) {
     try {
       const response = await fetch(`${API_BASE_URL}/bookings/update`, {
         method: 'POST',
@@ -56,6 +56,22 @@ const api = {
           nodeSequence,
           ...details,
         }),
+      });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error updating booking node:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Update booking details (full edit)
+  async updateBooking(bookingId, bookingData) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bookingData),
       });
       const data = await response.json();
       return data;
