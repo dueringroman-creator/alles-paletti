@@ -14,6 +14,7 @@ let bookingData = {
 let inboxTasks = [];
 let mapLocations = [];
 let currentBookings = [];
+let currentEvents = [];
 
 let map = null;
 
@@ -81,6 +82,16 @@ async function loadTasks() {
     }
 }
 
+async function loadEvents() {
+    try {
+        const events = await window.logistikbudeAPI.getEvents(null, 10);
+        currentEvents = events;
+        renderEventLog();
+    } catch (error) {
+        console.error('Error loading events:', error);
+    }
+}
+
 async function completeTask(taskId) {
     try {
         const result = await window.logistikbudeAPI.completeTask(taskId, 'Demo User', 'Completed via UI');
@@ -89,8 +100,9 @@ async function completeTask(taskId) {
             // Show success feedback
             showToast('✓ Task completed successfully!', 'success');
 
-            // Reload tasks to reflect changes
+            // Reload tasks and events to reflect changes
             await loadTasks();
+            await loadEvents();
         } else {
             showToast('✗ Failed to complete task', 'error');
         }
@@ -124,9 +136,116 @@ function showToast(message, type = 'info') {
     }, 3000);
 }
 
+async function loadCockpitData() {
+    await Promise.all([
+        loadBookings(),
+        loadTasks(),
+        loadEvents()
+    ]);
+
+    renderCockpitMetrics();
+    renderActiveTransports();
+}
+
 // ============================================
 // RENDERING FUNCTIONS
 // ============================================
+
+function renderCockpitMetrics() {
+    const inTransit = currentBookings.filter(b => b.status === 'in_transit').length;
+    const delivered = currentBookings.filter(b => b.status === 'delivered').length;
+    const openTasks = inboxTasks.filter(t => t.status !== 'completed').length;
+
+    document.getElementById('metric-exchanges').textContent = currentBookings.length;
+    document.getElementById('metric-transit').textContent = inTransit;
+    document.getElementById('metric-completed').textContent = delivered;
+    document.getElementById('metric-issues').textContent = openTasks;
+}
+
+function renderActiveTransports() {
+    const container = document.getElementById('active-transports-list');
+    const countBadge = document.getElementById('active-count');
+
+    if (!container) return;
+
+    if (currentBookings.length === 0) {
+        container.innerHTML = '<div style="padding: 2rem; text-align: center; color: #64748b;">No active transports</div>';
+        countBadge.textContent = '0';
+        return;
+    }
+
+    countBadge.textContent = currentBookings.length;
+
+    container.innerHTML = currentBookings.map(booking => {
+        const statusClass = booking.status === 'in_transit' ? 'in-transit' :
+                           booking.status === 'delivered' ? 'delivered' : 'pending';
+        const statusIcon = booking.status === 'in_transit' ? '⏳' :
+                          booking.status === 'delivered' ? '✅' : '⏹️';
+        const statusText = booking.status.replace('_', ' ').toUpperCase();
+
+        return `
+            <div class="transport-card">
+                <div class="transport-header">
+                    <div>
+                        <h4 class="transport-title">${booking.origin.name} → ${booking.destination.name}</h4>
+                        <div class="transport-subtitle">
+                            ${booking.bookingNumber} • ${booking.carrier.name}
+                        </div>
+                    </div>
+                    <div class="transport-status ${statusClass}">
+                        ${statusIcon} ${statusText}
+                    </div>
+                </div>
+                <div class="transport-details">
+                    <div class="transport-detail">
+                        <div class="transport-detail-label">Shipper</div>
+                        <div class="transport-detail-value">${booking.shipper.name}</div>
+                    </div>
+                    <div class="transport-detail">
+                        <div class="transport-detail-label">Consignee</div>
+                        <div class="transport-detail-value">${booking.consignee.name}</div>
+                    </div>
+                    <div class="transport-detail">
+                        <div class="transport-detail-label">Progress</div>
+                        <div class="transport-detail-value">${booking.progress}%</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderEventLog() {
+    const container = document.getElementById('event-log');
+    if (!container) return;
+
+    if (currentEvents.length === 0) {
+        container.innerHTML = '<div style="padding: 1rem; text-align: center; color: #64748b;">No recent events</div>';
+        return;
+    }
+
+    container.innerHTML = currentEvents.map(event => {
+        const eventType = event.eventType || 'info';
+        const eventClass = eventType.includes('completed') ? 'success' :
+                          eventType.includes('created') ? 'warning' : '';
+
+        // Format timestamp
+        const date = new Date(event.timestamp);
+        const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+        return `
+            <div class="event-item ${eventClass}">
+                <div class="event-time">${dateStr} at ${timeStr}</div>
+                <div class="event-description">${event.details}</div>
+                <div class="event-meta">
+                    ${event.bookingNumber ? `Booking ${event.bookingNumber}` : ''}
+                    ${event.userName ? `• by ${event.userName}` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
 
 function renderBooking() {
     const pLane = document.getElementById('lane-physical');
@@ -441,10 +560,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Load data from API
     console.log('Loading data from API...');
-    await Promise.all([
-        loadBookings(),
-        loadTasks()
-    ]);
+    await loadCockpitData();
 
     console.log('✓ Application ready with live data');
 });
