@@ -1,7 +1,7 @@
 // API Base URL - Update this after Vercel deployment
 // For local testing use: 'http://localhost:3000/api'
 // For production use your Vercel URL: 'https://your-project.vercel.app/api'
-const API_BASE_URL = 'http://localhost:3000/api'; // CHANGE THIS AFTER DEPLOYMENT
+const API_BASE_URL = 'https://alles-paletti.vercel.app/api';
 
 // API Client for Logistikbude Backend
 const api = {
