@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/stop-timeline.css">
     <link rel="stylesheet" href="css/document-intelligence.css">
+    <link rel="stylesheet" href="css/modern-ui.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
@@ -464,11 +465,90 @@
                         <h1>Document Intelligence</h1>
                         <p style="color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.5rem;">AI-powered POD processing • Automatic field extraction</p>
                     </div>
-                    <button class="btn btn-primary" onclick="openUploadDocumentModal()">
+                    <button class="action-btn action-btn-primary" id="toggle-upload-btn" onclick="toggleUploadForm()">
                         <i class="ri-upload-2-line"></i> Upload Document
                     </button>
                 </div>
             </header>
+
+            <!-- Inline Upload Form (Collapsed by default) -->
+            <div id="inline-upload-form" class="inline-form collapsed">
+                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+                    <i class="ri-sparkling-line" style="font-size: 2rem; color: var(--accent-primary);"></i>
+                    <div>
+                        <h3 style="margin: 0; font-size: 1.125rem;">Upload Document</h3>
+                        <p style="margin: 0.25rem 0 0 0; color: var(--text-secondary); font-size: 0.875rem;">
+                            AI will extract booking details and create transactions automatically
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Dropzone -->
+                <div id="dropzone-inline" class="upload-area">
+                    <i class="ri-file-upload-line upload-icon"></i>
+                    <div class="upload-text">Drag & drop document here or click to browse</div>
+                    <div class="upload-hint">Supported: PDF, JPG, PNG (Max 10MB)</div>
+                    <input type="file" id="file-input-inline" accept=".pdf,.jpg,.jpeg,.png" style="display: none;" onchange="handleFileSelect(event)">
+                </div>
+
+                <!-- File Preview (Hidden until file selected) -->
+                <div id="inline-file-preview" class="inline-file-preview hidden">
+                    <div class="file-icon">
+                        <i class="ri-file-pdf-line"></i>
+                    </div>
+                    <div class="file-details">
+                        <div class="file-name" id="file-name-inline">document.pdf</div>
+                        <div class="file-meta" id="file-size-inline">2.4 MB</div>
+                    </div>
+                </div>
+
+                <!-- Document Options -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem;">
+                    <div>
+                        <label style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem; color: var(--text-primary);">
+                            Document Type
+                        </label>
+                        <select id="upload-doc-type-inline" style="width: 100%; padding: 0.625rem; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text-primary);">
+                            <option value="pod">POD (Proof of Delivery)</option>
+                            <option value="cmr">CMR (Consignment Note)</option>
+                            <option value="invoice">Invoice</option>
+                            <option value="packing_list">Packing List</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem; color: var(--text-primary);">
+                            Booking Number (Optional)
+                        </label>
+                        <input type="text" id="upload-booking-number-inline" placeholder="e.g., BK-2026-0001" style="width: 100%; padding: 0.625rem; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text-primary);">
+                    </div>
+                </div>
+
+                <!-- AI Processing Options -->
+                <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 6px;">
+                    <div style="font-weight: 500; margin-bottom: 0.75rem; color: var(--text-primary);">
+                        <i class="ri-sparkling-line"></i> AI Processing
+                    </div>
+                    <label style="display: flex; align-items: center; cursor: pointer; margin-bottom: 0.5rem;">
+                        <input type="checkbox" id="auto-create-inline" checked style="margin-right: 0.5rem;">
+                        <span style="font-size: 0.875rem; color: var(--text-secondary);">Auto-create transactions for high-confidence extractions (≥85%)</span>
+                    </label>
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" id="create-tasks-inline" checked style="margin-right: 0.5rem;">
+                        <span style="font-size: 0.875rem; color: var(--text-secondary);">Create review tasks for low-confidence extractions (<85%)</span>
+                    </label>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="form-actions">
+                    <button class="action-btn action-btn-secondary" onclick="toggleUploadForm()">
+                        Cancel
+                    </button>
+                    <button class="action-btn action-btn-success" onclick="uploadDocumentInline()">
+                        <i class="ri-sparkling-line"></i> Process Document
+                    </button>
+                </div>
+            </div>
 
             <!-- Document Stats -->
             <div class="reconciliation-summary">
@@ -536,7 +616,7 @@
                     <div style="padding: 3rem; text-align: center; color: var(--text-tertiary);">
                         <i class="ri-file-upload-line" style="font-size: 3rem; opacity: 0.3;"></i>
                         <p style="margin-top: 1rem;">No documents uploaded yet</p>
-                        <p style="font-size: 0.875rem; margin-top: 0.5rem;">Upload a POD or CMR to get started</p>
+                        <p style="font-size: 0.875rem; margin-top: 0.5rem;">Click "Upload Document" to get started</p>
                     </div>
                 </div>
             </div>
@@ -960,9 +1040,65 @@
     </div>
 </div>
 
+<!-- Document Viewer Slide Panel -->
+<div id="document-viewer-panel" class="slide-panel large">
+    <div class="slide-panel-header">
+        <h3>
+            <i class="ri-file-text-line"></i>
+            <span id="viewer-doc-name">Document</span>
+        </h3>
+        <button class="close-panel-btn" onclick="closeDocumentViewer()">
+            <i class="ri-close-line"></i>
+        </button>
+    </div>
+
+    <div class="slide-panel-body" style="padding: 0;">
+        <div class="document-viewer">
+            <div class="viewer-sidebar">
+                <div class="section-header" style="padding: 1rem;">
+                    <h4 style="font-size: 0.875rem; margin: 0;">Extraction Results</h4>
+                </div>
+                <div id="extraction-results-list" class="extraction-list">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+
+            <div class="viewer-main">
+                <div class="viewer-toolbar">
+                    <div class="toolbar-group">
+                        <button class="action-btn action-btn-secondary" onclick="viewerPrevPage()" id="viewer-prev-btn">
+                            <i class="ri-arrow-left-line"></i> Previous
+                        </button>
+                        <span id="viewer-page-info" style="padding: 0 1rem; color: var(--text-secondary);">Page 1 of 1</span>
+                        <button class="action-btn action-btn-secondary" onclick="viewerNextPage()" id="viewer-next-btn">
+                            Next <i class="ri-arrow-right-line"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="viewer-canvas-container">
+                    <div id="viewer-canvas" class="viewer-canvas">
+                        <!-- Document page will be rendered here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide-panel-footer">
+        <button class="action-btn action-btn-danger" onclick="deleteDocumentConfirm()">
+            <i class="ri-delete-bin-line"></i> Delete Document
+        </button>
+        <button class="action-btn action-btn-secondary" onclick="closeDocumentViewer()">
+            Close
+        </button>
+    </div>
+</div>
+
 <script src="js/local-storage-db.js"></script>
 <script src="js/test-data-loader.js"></script>
-<script src="js/document-intelligence.js"></script>
+<script src="js/ui-helpers.js"></script>
+<script src="js/document-intelligence-v2.js"></script>
 <script src="js/api.js"></script>
 <script src="js/reconciliation-engine.js"></script>
 <script src="js/logic.js"></script>
