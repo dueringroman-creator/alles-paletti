@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/stop-timeline.css">
+    <link rel="stylesheet" href="css/document-intelligence.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
@@ -18,6 +19,7 @@
             <a href="#" class="nav-item active" onclick="switchTab('cockpit')"><i class="ri-dashboard-line"></i> Cockpit</a>
             <a href="#" class="nav-item" onclick="switchTab('bookings')"><i class="ri-route-line"></i> Bookings</a>
             <a href="#" class="nav-item" onclick="switchTab('balances')"><i class="ri-scales-line"></i> Balances</a>
+            <a href="#" class="nav-item" onclick="switchTab('documents')"><i class="ri-file-text-line"></i> Documents</a>
         </nav>
         <div class="inbox-panel">
             <div class="panel-header"><h5>INTELLIGENT INBOX</h5></div>
@@ -454,6 +456,91 @@
                 </div>
             </div>
         </div>
+
+        <div id="view-documents" class="view hidden">
+            <header>
+                <div class="header-flex">
+                    <div>
+                        <h1>Document Intelligence</h1>
+                        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.5rem;">AI-powered POD processing • Automatic field extraction</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openUploadDocumentModal()">
+                        <i class="ri-upload-2-line"></i> Upload Document
+                    </button>
+                </div>
+            </header>
+
+            <!-- Document Stats -->
+            <div class="reconciliation-summary">
+                <div class="recon-card">
+                    <div class="recon-icon" style="background: rgba(59, 130, 246, 0.15); color: var(--accent-primary);">
+                        <i class="ri-file-text-line"></i>
+                    </div>
+                    <div class="recon-content">
+                        <div class="recon-value" id="doc-total">0</div>
+                        <div class="recon-label">Total Documents</div>
+                    </div>
+                </div>
+                <div class="recon-card">
+                    <div class="recon-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--accent-success);">
+                        <i class="ri-check-double-line"></i>
+                    </div>
+                    <div class="recon-content">
+                        <div class="recon-value" id="doc-processed">0</div>
+                        <div class="recon-label">Processed</div>
+                    </div>
+                </div>
+                <div class="recon-card">
+                    <div class="recon-icon" style="background: rgba(245, 158, 11, 0.15); color: var(--accent-warning);">
+                        <i class="ri-time-line"></i>
+                    </div>
+                    <div class="recon-content">
+                        <div class="recon-value" id="doc-pending-review">0</div>
+                        <div class="recon-label">Pending Review</div>
+                    </div>
+                </div>
+                <div class="recon-card">
+                    <div class="recon-icon" style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6;">
+                        <i class="ri-sparkling-line"></i>
+                    </div>
+                    <div class="recon-content">
+                        <div class="recon-value" id="doc-auto-created">0</div>
+                        <div class="recon-label">Auto-Created</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Document List -->
+            <div class="reconciliation-table">
+                <div class="table-header">
+                    <h3><i class="ri-folder-open-line"></i> Documents</h3>
+                    <div class="table-filters">
+                        <select id="doc-filter-status" onchange="filterDocuments()">
+                            <option value="all">All Status</option>
+                            <option value="pending">Pending Processing</option>
+                            <option value="processing">Processing</option>
+                            <option value="completed">Completed</option>
+                            <option value="failed">Failed</option>
+                        </select>
+                        <select id="doc-filter-type" onchange="filterDocuments()">
+                            <option value="all">All Types</option>
+                            <option value="pod">POD (Proof of Delivery)</option>
+                            <option value="cmr">CMR</option>
+                            <option value="invoice">Invoice</option>
+                            <option value="packing_list">Packing List</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="document-list" id="document-list">
+                    <div style="padding: 3rem; text-align: center; color: var(--text-tertiary);">
+                        <i class="ri-file-upload-line" style="font-size: 3rem; opacity: 0.3;"></i>
+                        <p style="margin-top: 1rem;">No documents uploaded yet</p>
+                        <p style="font-size: 0.875rem; margin-top: 0.5rem;">Upload a POD or CMR to get started</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 </div>
 
@@ -713,8 +800,169 @@
     </div>
 </div>
 
+<!-- Upload Document Modal -->
+<div id="upload-document-modal" class="modal hidden">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h3><i class="ri-upload-2-line"></i> Upload Document</h3>
+            <button class="btn-close" onclick="closeUploadDocumentModal()"><i class="ri-close-line"></i></button>
+        </div>
+
+        <div class="booking-form">
+            <!-- Document Type Selection -->
+            <div class="form-section">
+                <h4>Document Type</h4>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Document Type *</label>
+                        <select id="upload-doc-type" required>
+                            <option value="">Select type...</option>
+                            <option value="pod">POD (Proof of Delivery)</option>
+                            <option value="cmr">CMR (Consignment Note)</option>
+                            <option value="invoice">Invoice</option>
+                            <option value="packing_list">Packing List</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Optional: Link to Booking -->
+            <div class="form-section">
+                <h4>Link to Booking (Optional)</h4>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Booking Number</label>
+                        <input type="text" id="upload-booking-number" placeholder="e.g., BK-2026-0001">
+                        <small style="color: var(--text-tertiary); display: block; margin-top: 0.25rem;">
+                            Leave empty if AI should detect booking number automatically
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Upload -->
+            <div class="form-section">
+                <h4>Upload File</h4>
+                <div id="dropzone" class="dropzone">
+                    <div class="dropzone-content">
+                        <i class="ri-file-upload-line" style="font-size: 3rem; opacity: 0.5;"></i>
+                        <p style="margin-top: 1rem; font-weight: 500;">Drag & drop file here</p>
+                        <p style="font-size: 0.875rem; color: var(--text-tertiary); margin-top: 0.5rem;">or</p>
+                        <button type="button" class="btn btn-secondary" style="margin-top: 0.75rem;" onclick="document.getElementById('file-input').click()">
+                            <i class="ri-folder-open-line"></i> Browse Files
+                        </button>
+                        <input type="file" id="file-input" accept=".pdf,.jpg,.jpeg,.png" style="display: none;" onchange="handleFileSelect(event)">
+                        <p style="font-size: 0.75rem; color: var(--text-tertiary); margin-top: 1rem;">
+                            Supported: PDF, JPG, PNG (Max 10MB)
+                        </p>
+                    </div>
+                    <div id="file-preview" class="file-preview hidden">
+                        <div class="file-preview-info">
+                            <i class="ri-file-pdf-line" style="font-size: 2rem; color: var(--accent-error);"></i>
+                            <div style="margin-left: 1rem; flex: 1;">
+                                <div id="file-name" style="font-weight: 500;"></div>
+                                <div id="file-size" style="font-size: 0.875rem; color: var(--text-tertiary); margin-top: 0.25rem;"></div>
+                            </div>
+                            <button type="button" class="btn btn-secondary" onclick="clearFileSelection()">
+                                <i class="ri-close-line"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Processing Options -->
+            <div class="form-section">
+                <h4>AI Processing Options</h4>
+                <div class="info-box">
+                    <i class="ri-sparkling-line"></i>
+                    <span>Document will be processed using AI to extract:
+                        <strong>Booking Number, Equipment Type, Quantity, Origin, Destination, Dates, Signatures</strong>
+                    </span>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" id="auto-create-transactions" checked style="margin-right: 0.5rem;">
+                        <span>Automatically create transactions for high-confidence extractions (≥85%)</span>
+                    </label>
+                    <label style="display: flex; align-items: center; cursor: pointer; margin-top: 0.75rem;">
+                        <input type="checkbox" id="create-review-tasks" checked style="margin-right: 0.5rem;">
+                        <span>Create review tasks for low-confidence extractions (<85%)</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeUploadDocumentModal()">Cancel</button>
+            <button class="btn btn-primary" id="upload-btn" onclick="uploadDocument()">
+                <i class="ri-upload-cloud-line"></i> Upload & Process
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Document Viewer Modal -->
+<div id="document-viewer-modal" class="modal hidden">
+    <div class="modal-content modal-xl">
+        <div class="modal-header">
+            <h3><i class="ri-file-text-line"></i> <span id="viewer-doc-name">Document</span></h3>
+            <button class="btn-close" onclick="closeDocumentViewerModal()"><i class="ri-close-line"></i></button>
+        </div>
+
+        <div class="document-viewer">
+            <div class="viewer-sidebar">
+                <div class="section-header" style="padding: 1rem;">
+                    <h4 style="font-size: 0.875rem; margin: 0;">Extraction Results</h4>
+                </div>
+                <div id="extraction-results-list" class="extraction-list">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+
+            <div class="viewer-main">
+                <div class="viewer-toolbar">
+                    <div class="toolbar-group">
+                        <button class="btn btn-sm" onclick="viewerPrevPage()" id="viewer-prev-btn">
+                            <i class="ri-arrow-left-line"></i> Previous
+                        </button>
+                        <span id="viewer-page-info" style="padding: 0 1rem; color: var(--text-secondary);">Page 1 of 1</span>
+                        <button class="btn btn-sm" onclick="viewerNextPage()" id="viewer-next-btn">
+                            Next <i class="ri-arrow-right-line"></i>
+                        </button>
+                    </div>
+                    <div class="toolbar-group">
+                        <button class="btn btn-sm" onclick="viewerZoomOut()">
+                            <i class="ri-zoom-out-line"></i>
+                        </button>
+                        <span id="viewer-zoom" style="padding: 0 0.5rem; color: var(--text-secondary);">100%</span>
+                        <button class="btn btn-sm" onclick="viewerZoomIn()">
+                            <i class="ri-zoom-in-line"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="viewer-canvas-container">
+                    <div id="viewer-canvas" class="viewer-canvas">
+                        <!-- Document page will be rendered here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeDocumentViewerModal()">Close</button>
+            <button class="btn btn-danger" onclick="deleteDocument()">
+                <i class="ri-delete-bin-line"></i> Delete Document
+            </button>
+        </div>
+    </div>
+</div>
+
 <script src="js/local-storage-db.js"></script>
 <script src="js/test-data-loader.js"></script>
+<script src="js/document-intelligence.js"></script>
 <script src="js/api.js"></script>
 <script src="js/reconciliation-engine.js"></script>
 <script src="js/logic.js"></script>

@@ -1,0 +1,453 @@
+/**
+ * DOCUMENT INTELLIGENCE STYLES
+ * Styles for AI-powered document processing interface
+ */
+
+/* ============================================
+   DOCUMENT LIST
+   ============================================ */
+
+.document-list {
+    display: grid;
+    gap: 1rem;
+    padding: 1.5rem;
+}
+
+.document-card {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.document-card:hover {
+    border-color: var(--accent-primary);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.document-icon {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 8px;
+    font-size: 2rem;
+    color: var(--accent-primary);
+}
+
+.document-icon.pod {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--accent-success);
+}
+
+.document-icon.cmr {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--accent-warning);
+}
+
+.document-icon.invoice {
+    background: rgba(139, 92, 246, 0.1);
+    color: #8b5cf6;
+}
+
+.document-info {
+    flex: 1;
+}
+
+.document-title {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.document-meta {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 0.5rem;
+}
+
+.document-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.document-status {
+    padding: 0.375rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.document-status.pending {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--accent-warning);
+}
+
+.document-status.processing {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--accent-primary);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.document-status.completed {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--accent-success);
+}
+
+.document-status.failed {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--accent-error);
+}
+
+.document-confidence {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.confidence-bar {
+    width: 100px;
+    height: 6px;
+    background: var(--bg);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.confidence-fill {
+    height: 100%;
+    background: var(--accent-success);
+    transition: width 0.3s ease;
+}
+
+.confidence-fill.medium {
+    background: var(--accent-warning);
+}
+
+.confidence-fill.low {
+    background: var(--accent-error);
+}
+
+.confidence-value {
+    font-size: 0.875rem;
+    font-weight: 600;
+    min-width: 40px;
+}
+
+/* ============================================
+   DROPZONE
+   ============================================ */
+
+.dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 3rem 2rem;
+    text-align: center;
+    background: var(--bg);
+    transition: all 0.2s ease;
+}
+
+.dropzone.dragover {
+    border-color: var(--accent-primary);
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.dropzone-content {
+    color: var(--text-secondary);
+}
+
+.file-preview {
+    padding: 1.5rem;
+    background: var(--bg-elevated);
+    border-radius: 8px;
+}
+
+.file-preview.hidden {
+    display: none;
+}
+
+.file-preview-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* ============================================
+   DOCUMENT VIEWER
+   ============================================ */
+
+.modal-xl {
+    max-width: 1400px;
+    width: 95vw;
+    height: 90vh;
+    max-height: 90vh;
+}
+
+.document-viewer {
+    display: flex;
+    height: calc(90vh - 180px);
+    gap: 0;
+}
+
+.viewer-sidebar {
+    width: 350px;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    background: var(--bg);
+}
+
+.viewer-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.viewer-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-elevated);
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+.viewer-canvas-container {
+    flex: 1;
+    overflow: auto;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.viewer-canvas {
+    max-width: 100%;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+    background: white;
+}
+
+.viewer-canvas img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+/* ============================================
+   EXTRACTION RESULTS
+   ============================================ */
+
+.extraction-list {
+    padding: 0;
+}
+
+.extraction-item {
+    padding: 1.25rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.extraction-item:last-child {
+    border-bottom: none;
+}
+
+.extraction-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.extraction-page-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.extraction-confidence {
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.extraction-confidence.high {
+    color: var(--accent-success);
+}
+
+.extraction-confidence.medium {
+    color: var(--accent-warning);
+}
+
+.extraction-confidence.low {
+    color: var(--accent-error);
+}
+
+.extraction-fields {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.extraction-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.extraction-field-label {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.extraction-field-value {
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.extraction-field-value.empty {
+    color: var(--text-tertiary);
+    font-style: italic;
+}
+
+.extraction-field-confidence {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.confidence-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-success);
+}
+
+.confidence-dot.medium {
+    background: var(--accent-warning);
+}
+
+.confidence-dot.low {
+    background: var(--accent-error);
+}
+
+.extraction-actions {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 0.5rem;
+}
+
+.extraction-actions button {
+    flex: 1;
+    font-size: 0.75rem;
+    padding: 0.5rem;
+}
+
+.auto-created-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--accent-success);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.requires-review-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--accent-warning);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.6;
+    }
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.processing-spinner {
+    display: inline-block;
+    animation: spin 1s linear infinite;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 1200px) {
+    .modal-xl {
+        width: 98vw;
+        height: 95vh;
+    }
+
+    .viewer-sidebar {
+        width: 300px;
+    }
+}
+
+@media (max-width: 768px) {
+    .document-viewer {
+        flex-direction: column;
+    }
+
+    .viewer-sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        max-height: 200px;
+    }
+}

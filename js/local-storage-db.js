@@ -14,6 +14,9 @@ const DB_KEYS = {
     EVENTS: 'lb3_events',
     COMPANIES: 'lb3_companies',
     LOCATIONS: 'lb3_locations',
+    DOCUMENTS: 'lb3_documents',
+    DOCUMENT_PAGES: 'lb3_document_pages',
+    EXTRACTION_RESULTS: 'lb3_extraction_results',
     METADATA: 'lb3_metadata'
 };
 
@@ -527,6 +530,258 @@ const locationsDB = {
 };
 
 // ============================================
+// DOCUMENTS API (Document Intelligence)
+// ============================================
+
+const documentsDB = {
+    // Get all documents
+    getAll() {
+        return getCollection(DB_KEYS.DOCUMENTS);
+    },
+
+    // Get document by ID
+    getById(id) {
+        const documents = getCollection(DB_KEYS.DOCUMENTS);
+        return documents.find(d => d.id === parseInt(id));
+    },
+
+    // Get documents by booking ID
+    getByBookingId(bookingId) {
+        const documents = getCollection(DB_KEYS.DOCUMENTS);
+        return documents.filter(d => d.bookingId === parseInt(bookingId));
+    },
+
+    // Get documents by status
+    getByStatus(status) {
+        const documents = getCollection(DB_KEYS.DOCUMENTS);
+        return documents.filter(d => d.processingStatus === status);
+    },
+
+    // Create document
+    create(docData) {
+        const documents = getCollection(DB_KEYS.DOCUMENTS);
+        const id = getNextId(DB_KEYS.DOCUMENTS);
+        const now = new Date().toISOString();
+
+        const newDocument = {
+            id,
+            fileName: docData.fileName || 'unknown.pdf',
+            fileSize: docData.fileSize || 0,
+            fileType: docData.fileType || 'application/pdf',
+            fileData: docData.fileData || null, // Base64 encoded file
+            uploadedAt: now,
+            uploadedBy: docData.uploadedBy || 'User',
+            bookingId: docData.bookingId || null,
+            bookingNumber: docData.bookingNumber || null,
+            companyId: docData.companyId || null,
+            companyName: docData.companyName || null,
+            documentType: docData.documentType || 'pod', // pod, cmr, invoice, packing_list
+            processingStatus: 'pending', // pending, processing, completed, failed
+            processingStarted: null,
+            processingCompleted: null,
+            totalPages: docData.totalPages || 0,
+            relevantPages: 0,
+            extractedFields: {},
+            confidence: 0,
+            requiresReview: false,
+            notes: docData.notes || '',
+            ...docData
+        };
+
+        documents.push(newDocument);
+        saveCollection(DB_KEYS.DOCUMENTS, documents);
+        return newDocument;
+    },
+
+    // Update document
+    update(id, updates) {
+        const documents = getCollection(DB_KEYS.DOCUMENTS);
+        const index = documents.findIndex(d => d.id === parseInt(id));
+
+        if (index === -1) return null;
+
+        documents[index] = {
+            ...documents[index],
+            ...updates,
+            updatedAt: new Date().toISOString()
+        };
+
+        saveCollection(DB_KEYS.DOCUMENTS, documents);
+        return documents[index];
+    },
+
+    // Delete document
+    delete(id) {
+        const documents = getCollection(DB_KEYS.DOCUMENTS);
+        const filtered = documents.filter(d => d.id !== parseInt(id));
+        saveCollection(DB_KEYS.DOCUMENTS, filtered);
+
+        // Also delete related pages and extractions
+        documentPagesDB.deleteByDocumentId(id);
+        extractionResultsDB.deleteByDocumentId(id);
+        return true;
+    }
+};
+
+const documentPagesDB = {
+    // Get all pages
+    getAll() {
+        return getCollection(DB_KEYS.DOCUMENT_PAGES);
+    },
+
+    // Get pages by document ID
+    getByDocumentId(documentId) {
+        const pages = getCollection(DB_KEYS.DOCUMENT_PAGES);
+        return pages.filter(p => p.documentId === parseInt(documentId));
+    },
+
+    // Get page by ID
+    getById(id) {
+        const pages = getCollection(DB_KEYS.DOCUMENT_PAGES);
+        return pages.find(p => p.id === parseInt(id));
+    },
+
+    // Create page
+    create(pageData) {
+        const pages = getCollection(DB_KEYS.DOCUMENT_PAGES);
+        const id = getNextId(DB_KEYS.DOCUMENT_PAGES);
+
+        const newPage = {
+            id,
+            documentId: pageData.documentId,
+            pageNumber: pageData.pageNumber || 1,
+            imageData: pageData.imageData || null, // Base64 encoded image
+            imageUrl: pageData.imageUrl || null,
+            width: pageData.width || 0,
+            height: pageData.height || 0,
+            relevanceScore: pageData.relevanceScore || 0, // 0.0 - 1.0
+            isRelevant: pageData.relevanceScore > 0.5,
+            classifiedAs: pageData.classifiedAs || null, // 'pod', 'cmr', 'cover_page', 'irrelevant'
+            processedAt: new Date().toISOString(),
+            ...pageData
+        };
+
+        pages.push(newPage);
+        saveCollection(DB_KEYS.DOCUMENT_PAGES, pages);
+        return newPage;
+    },
+
+    // Update page
+    update(id, updates) {
+        const pages = getCollection(DB_KEYS.DOCUMENT_PAGES);
+        const index = pages.findIndex(p => p.id === parseInt(id));
+
+        if (index === -1) return null;
+
+        pages[index] = {
+            ...pages[index],
+            ...updates
+        };
+
+        saveCollection(DB_KEYS.DOCUMENT_PAGES, pages);
+        return pages[index];
+    },
+
+    // Delete pages by document ID
+    deleteByDocumentId(documentId) {
+        const pages = getCollection(DB_KEYS.DOCUMENT_PAGES);
+        const filtered = pages.filter(p => p.documentId !== parseInt(documentId));
+        saveCollection(DB_KEYS.DOCUMENT_PAGES, filtered);
+        return true;
+    }
+};
+
+const extractionResultsDB = {
+    // Get all extraction results
+    getAll() {
+        return getCollection(DB_KEYS.EXTRACTION_RESULTS);
+    },
+
+    // Get extraction by document ID
+    getByDocumentId(documentId) {
+        const results = getCollection(DB_KEYS.EXTRACTION_RESULTS);
+        return results.filter(r => r.documentId === parseInt(documentId));
+    },
+
+    // Get extraction by page ID
+    getByPageId(pageId) {
+        const results = getCollection(DB_KEYS.EXTRACTION_RESULTS);
+        return results.find(r => r.pageId === parseInt(pageId));
+    },
+
+    // Get high-confidence extractions (>= 0.85)
+    getHighConfidence() {
+        const results = getCollection(DB_KEYS.EXTRACTION_RESULTS);
+        return results.filter(r => r.overallConfidence >= 0.85);
+    },
+
+    // Get low-confidence extractions (< 0.85)
+    getLowConfidence() {
+        const results = getCollection(DB_KEYS.EXTRACTION_RESULTS);
+        return results.filter(r => r.overallConfidence < 0.85);
+    },
+
+    // Create extraction result
+    create(extractionData) {
+        const results = getCollection(DB_KEYS.EXTRACTION_RESULTS);
+        const id = getNextId(DB_KEYS.EXTRACTION_RESULTS);
+        const now = new Date().toISOString();
+
+        const newExtraction = {
+            id,
+            documentId: extractionData.documentId,
+            pageId: extractionData.pageId,
+            pageNumber: extractionData.pageNumber || 1,
+            extractedFields: extractionData.extractedFields || {},
+            fieldConfidences: extractionData.fieldConfidences || {},
+            overallConfidence: extractionData.overallConfidence || 0,
+            bookingNumber: extractionData.extractedFields?.bookingNumber || null,
+            equipmentType: extractionData.extractedFields?.equipmentType || null,
+            quantity: extractionData.extractedFields?.quantity || null,
+            origin: extractionData.extractedFields?.origin || null,
+            destination: extractionData.extractedFields?.destination || null,
+            date: extractionData.extractedFields?.date || null,
+            signature: extractionData.extractedFields?.signature || null,
+            autoCreated: false, // Will be set to true if transaction auto-created
+            requiresReview: extractionData.overallConfidence < 0.85,
+            reviewedBy: null,
+            reviewedAt: null,
+            reviewStatus: 'pending', // pending, approved, rejected, corrected
+            extractedAt: now,
+            ...extractionData
+        };
+
+        results.push(newExtraction);
+        saveCollection(DB_KEYS.EXTRACTION_RESULTS, results);
+        return newExtraction;
+    },
+
+    // Update extraction
+    update(id, updates) {
+        const results = getCollection(DB_KEYS.EXTRACTION_RESULTS);
+        const index = results.findIndex(r => r.id === parseInt(id));
+
+        if (index === -1) return null;
+
+        results[index] = {
+            ...results[index],
+            ...updates
+        };
+
+        saveCollection(DB_KEYS.EXTRACTION_RESULTS, results);
+        return results[index];
+    },
+
+    // Delete extractions by document ID
+    deleteByDocumentId(documentId) {
+        const results = getCollection(DB_KEYS.EXTRACTION_RESULTS);
+        const filtered = results.filter(r => r.documentId !== parseInt(documentId));
+        saveCollection(DB_KEYS.EXTRACTION_RESULTS, filtered);
+        return true;
+    }
+};
+
+// ============================================
 // DATABASE UTILITIES
 // ============================================
 
@@ -571,6 +826,9 @@ const dbUtils = {
             events: getCollection(DB_KEYS.EVENTS).length,
             companies: getCollection(DB_KEYS.COMPANIES).length,
             locations: getCollection(DB_KEYS.LOCATIONS).length,
+            documents: getCollection(DB_KEYS.DOCUMENTS).length,
+            documentPages: getCollection(DB_KEYS.DOCUMENT_PAGES).length,
+            extractionResults: getCollection(DB_KEYS.EXTRACTION_RESULTS).length,
             metadata: JSON.parse(localStorage.getItem(DB_KEYS.METADATA) || '{}')
         };
     }
@@ -589,6 +847,9 @@ window.localDB = {
     events: eventsDB,
     companies: companiesDB,
     locations: locationsDB,
+    documents: documentsDB,
+    documentPages: documentPagesDB,
+    extractionResults: extractionResultsDB,
     utils: dbUtils
 };
 

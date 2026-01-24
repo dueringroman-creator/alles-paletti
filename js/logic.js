@@ -624,6 +624,10 @@ function switchTab(id) {
         loadCockpitData();
     } else if (id === 'balances') {
         loadReconciliation();
+    } else if (id === 'documents') {
+        if (typeof loadDocuments === 'function') {
+            loadDocuments();
+        }
     }
 }
 
