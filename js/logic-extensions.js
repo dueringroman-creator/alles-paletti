@@ -248,15 +248,9 @@ async function renderBookingDetailsWithStops(bookingId) {
 
 async function fetchStops(bookingId) {
     try {
-        const response = await fetch(`${API_BASE_URL}/stops?bookingId=${bookingId}`);
-        const result = await response.json();
-
-        if (result.success) {
-            return result.data || [];
-        } else {
-            console.error('Failed to fetch stops:', result.error);
-            return [];
-        }
+        // Use localStorage API
+        const stops = await window.logistikbudeAPI.getStops(bookingId);
+        return stops || [];
     } catch (error) {
         console.error('Error fetching stops:', error);
         return [];
